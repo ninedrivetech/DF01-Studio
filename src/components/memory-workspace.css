@@ -1,0 +1,288 @@
+.memory-page .page-heading {
+  margin-bottom: 16px;
+}
+
+.memory-page .connection-strip.is-connected:not(.expanded) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.memory-page .connection-strip.is-connected:not(.expanded) > .field,
+.memory-page .connection-strip.is-connected > .connection-icon {
+  display: none;
+}
+
+.memory-page .connection-strip.is-connected > .button {
+  grid-column: auto;
+}
+
+.memory-page .connection-summary {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.memory-page .connection-summary > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 4px 16px;
+}
+
+.memory-page .connection-summary strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.memory-page .connection-summary span {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+}
+
+.memory-page .connection-strip.expanded .connection-summary {
+  grid-column: 1 / -1;
+}
+
+.memory-modebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.memory-modebar .toolbar-actions {
+  margin-left: auto;
+  gap: 6px;
+}
+
+.memory-page .memory-layout {
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.memory-page .block-editor-column {
+  min-width: 0;
+}
+
+.memory-block-section {
+  container-type: inline-size;
+}
+
+.memory-block-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-height: 40px;
+  margin-bottom: 16px;
+}
+
+.memory-block-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.memory-block-identity h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-block-identity .tag {
+  font-size: 11px;
+}
+
+.memory-page .editor-actions {
+  margin: 0;
+  gap: 6px;
+}
+
+.memory-page .editor-actions .icon-button:nth-last-child(2) {
+  margin-left: 4px;
+}
+
+.memory-page .editor-toolbar {
+  margin: 0 0 12px;
+  flex-wrap: wrap;
+}
+
+.memory-page .editor-toolbar .section-meta {
+  font-size: 11px;
+}
+
+.memory-page .hex-editor {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 12px 6px;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.memory-page .byte-field {
+  gap: 5px;
+}
+
+.memory-page .byte-field > span {
+  font-size: 11px;
+}
+
+.memory-page .byte-field input {
+  height: 38px;
+  font-size: 15px;
+}
+
+.memory-page .byte-inspector {
+  padding-top: 16px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.memory-page .byte-formats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px 10px;
+  padding-bottom: 12px;
+}
+
+.memory-page .byte-reading-label {
+  font-size: 12px;
+}
+
+.memory-page .block-editor-column > .section + .section {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.memory-page .sector-data > div {
+  min-height: 42px;
+  padding: 5px 0;
+}
+
+.memory-page .sector-data code {
+  font-size: 12px;
+}
+
+.memory-page .record-origin {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11px;
+}
+
+@container (min-width: 800px) {
+  .memory-page .hex-editor {
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+  }
+
+  .memory-page .byte-formats {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .memory-page .memory-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .memory-modebar {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .memory-modebar > .segmented {
+    width: 100%;
+  }
+
+  .memory-modebar > .segmented button {
+    flex: 1;
+  }
+
+  .memory-page .memory-block-heading {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .memory-page .editor-actions {
+    width: 100%;
+  }
+
+  .memory-page .editor-actions .icon-button:nth-last-child(2) {
+    margin-left: auto;
+  }
+
+  .memory-page .hex-editor {
+    padding: 10px 8px;
+    column-gap: 4px;
+  }
+
+  .memory-page .byte-field input {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .memory-page .byte-formats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 8px;
+  }
+
+  .memory-page .connection-summary > div {
+    display: block;
+  }
+
+  .memory-page .connection-strip.expanded > .button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 520px) {
+  main.memory-page {
+    padding-top: 8px;
+  }
+
+  .memory-page .page-heading {
+    margin-bottom: 10px;
+  }
+
+  .memory-page .page-heading h1 {
+    font-size: 21px;
+  }
+
+  .memory-page .eyebrow,
+  .memory-page .protocol-strip {
+    display: none;
+  }
+
+  .memory-page .connection-strip {
+    margin-bottom: 10px;
+  }
+
+  .memory-page .memory-modebar {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .memory-page .memory-layout {
+    gap: 8px;
+  }
+
+  .memory-page .memory-block-heading {
+    margin-bottom: 8px;
+  }
+}

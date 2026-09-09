@@ -1,0 +1,489 @@
+/* Settings and logs use the same surfaces and control rhythm as the workbench. */
+main:is(.tool-page, .appearance-page) {
+  max-width: none;
+  --panel-pad: 14px;
+  --panel-gap: 12px;
+}
+:is(.tool-page, .appearance-page) .tool-panel {
+  margin: 0;
+  padding: var(--panel-pad);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  min-width: 0;
+}
+.tool-panel > .section-heading {
+  min-height: 32px;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+.tool-panel > .section-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.tool-panel > .section-heading h2 svg {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.panel-description {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.tool-page .settings-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--panel-gap);
+  align-items: stretch;
+}
+.tool-page .settings-layout > .section + .section {
+  padding: var(--panel-pad);
+  border: 1px solid var(--line);
+}
+.tool-page .key-form {
+  max-width: none;
+  padding-top: 0;
+  gap: 14px;
+}
+.tool-page .key-form .switch-label {
+  margin: 0;
+}
+.tool-page .form-actions {
+  padding-top: 14px;
+  margin-top: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tool-page .security-visual {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+}
+.tool-page .session-details {
+  font-size: 12px;
+  grid-template-columns: minmax(82px, 1fr) minmax(0, 1.6fr);
+  gap: 0 12px;
+}
+.tool-page .session-details :is(dt, dd) {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.tool-page .session-details :is(dt, dd):nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+.tool-page .device-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: "connection auto" "radio session";
+  gap: var(--panel-gap);
+  align-items: stretch;
+}
+.communication-panel {
+  grid-area: connection;
+}
+.automatic-panel {
+  grid-area: auto;
+}
+.radio-panel {
+  grid-area: radio;
+}
+.session-panel {
+  grid-area: session;
+}
+.tool-page .saved-configuration {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 0 12px;
+}
+.tool-page .saved-configuration > div {
+  min-width: 0;
+  padding: 8px 6px;
+  background: var(--canvas);
+  border-radius: 4px;
+}
+.tool-page .saved-configuration span {
+  margin-bottom: 6px;
+}
+.tool-page .saved-configuration strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.tool-page .setting-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 0;
+}
+.tool-page .setting-row:last-child {
+  padding-bottom: 0;
+}
+.tool-page .setting-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.tool-page .setting-row h3 {
+  font-size: 12px;
+  font-weight: 600;
+}
+.tool-page .setting-row p {
+  margin: 0;
+}
+.tool-page .setting-controls {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.tool-page .setting-controls .field,
+.tool-page .setting-row > .field {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+.tool-page .setting-controls .button {
+  flex-shrink: 0;
+}
+.tool-page .auto-form {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+.tool-page .auto-form .button {
+  justify-self: end;
+}
+.tool-page .logs-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tool-page .log-toolbar {
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+.tool-page .search-input {
+  max-width: 520px;
+}
+.tool-page .search-input svg {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tool-page .log-table-wrap {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+.tool-page .log-table {
+  table-layout: fixed;
+}
+.tool-page .log-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px;
+  font-size: 11px;
+}
+.tool-page .log-table td {
+  padding: 8px 10px;
+}
+.tool-page .logs-panel > .empty-state {
+  flex: 1;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.tool-page .log-footer {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.appearance-page .about-band {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.appearance-page .theme-option {
+  border-radius: 6px;
+}
+.appearance-page .theme-option:hover {
+  border-color: var(--accent);
+}
+.appearance-page .theme-description {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.appearance-page .appearance-preferences .setting-row p {
+  margin-top: 4px;
+}
+
+@media (min-width: 900px) and (min-height: 600px) {
+  main.tool-page {
+    --page-pad: 14px;
+    display: flex;
+    flex-direction: column;
+    padding-top: 7px;
+    padding-bottom: 8px;
+  }
+  .tool-page .page-heading {
+    margin-bottom: 7px;
+    flex-shrink: 0;
+  }
+  .tool-page h1 {
+    font-size: 21px;
+  }
+  .tool-page :is(.eyebrow, .protocol-strip, .connection-icon) {
+    display: none;
+  }
+  .tool-page .connection-strip {
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    gap: 8px;
+    flex-shrink: 0;
+    grid-template-columns: 94px minmax(130px, 1fr) 72px 54px auto;
+  }
+  .tool-page .field {
+    gap: 4px;
+  }
+  .tool-page input:not([type="checkbox"]),
+  .tool-page select {
+    min-height: 32px;
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .tool-page .key-form input:not([type="checkbox"]) {
+    height: 36px;
+  }
+  .tool-page input.gain-slider {
+    padding: 0;
+  }
+  .tool-page .button.btn {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+  .tool-page .icon-button.btn {
+    min-width: 28px;
+    width: 28px;
+    min-height: 28px;
+    height: 28px;
+  }
+  .tool-page > .page-content {
+    flex: 1;
+    min-height: auto;
+  }
+  .logs-page > .page-content {
+    display: flex;
+    min-height: 220px;
+  }
+  .logs-page .logs-panel {
+    flex: 1;
+  }
+  .appearance-page > .page-content {
+    display: grid;
+    grid-template-rows: minmax(230px, 1fr) auto auto;
+    gap: var(--panel-gap);
+    min-height: 0;
+  }
+  .appearance-page .appearance-themes {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .appearance-page .theme-grid {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .appearance-page .theme-option {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+  }
+  .appearance-page .theme-sample {
+    flex: 1;
+    min-height: 64px;
+    height: auto;
+    width: 100%;
+    padding: clamp(10px, 1.5vw, 24px);
+    gap: 10px;
+    aspect-ratio: auto;
+  }
+  .appearance-page .sample-content {
+    grid-template-rows: 12px 1fr;
+    gap: 10px;
+  }
+  .appearance-page .theme-name {
+    width: 100%;
+    padding: 12px 2px 6px;
+  }
+  .appearance-page .theme-description {
+    padding: 0 2px 4px;
+    font-size: 12px;
+    min-height: calc(3em + 4px);
+  }
+  .appearance-page .appearance-preferences {
+    gap: 0 24px;
+  }
+  .appearance-page .appearance-preferences .section-heading {
+    margin-bottom: 2px;
+  }
+  .appearance-page .appearance-preferences .setting-row {
+    padding: 8px 0 0;
+  }
+  .appearance-page .about-band {
+    margin: 0;
+    min-height: 64px;
+  }
+}
+@media (min-width: 900px) and (max-height: 740px) {
+  main:is(.tool-page, .appearance-page) {
+    --panel-pad: 10px;
+    --panel-gap: 8px;
+  }
+  .tool-panel > .section-heading {
+    margin-bottom: 8px;
+    min-height: 28px;
+  }
+  .tool-page .setting-row {
+    padding-top: 8px;
+    gap: 5px;
+  }
+  .tool-page .auto-form {
+    gap: 8px;
+  }
+  .device-page .tool-panel > .section-heading {
+    margin-bottom: 4px;
+  }
+  .device-page .saved-configuration {
+    padding-bottom: 8px;
+  }
+  .device-page .saved-configuration > div {
+    padding-block: 5px;
+  }
+  .device-page .saved-configuration span {
+    margin-bottom: 4px;
+  }
+  .device-page .tool-panel .setting-row {
+    padding: 6px 0;
+  }
+  .device-page .tool-panel .setting-row:last-child {
+    padding-bottom: 0;
+  }
+  .device-page .radio-panel > .section-heading + .setting-row {
+    padding-top: 0;
+  }
+  .appearance-page > .page-content {
+    grid-template-rows: minmax(210px, 1fr) auto auto;
+  }
+  .appearance-page .theme-grid {
+    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .appearance-page .theme-option {
+    padding: 6px;
+  }
+  .appearance-page .theme-name {
+    padding-top: 8px;
+    font-size: 12px;
+  }
+  .appearance-page .theme-description {
+    font-size: 11px;
+  }
+  .appearance-page .appearance-preferences .setting-row p {
+    display: none;
+  }
+  .appearance-page .about-band {
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+}
+@media (max-width: 899px) {
+  main:is(.tool-page, .appearance-page) {
+    padding-bottom: 16px;
+  }
+  .tool-page .settings-layout,
+  .tool-page .device-settings {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+  .tool-page .device-settings > .section {
+    grid-area: auto;
+  }
+  .tool-page .logs-panel {
+    min-height: 360px;
+  }
+  .tool-page .log-table {
+    min-width: 0;
+  }
+  .tool-page .log-table-wrap {
+    max-height: 65vh;
+  }
+  .appearance-page .tool-panel {
+    margin-bottom: 12px;
+  }
+  .appearance-page .theme-grid {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .tool-page .log-table,
+  .tool-page .log-table tbody {
+    display: block;
+  }
+  .tool-page .log-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tool-page .log-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px 48px 32px;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    padding: 6px;
+  }
+  .tool-page .log-table td {
+    min-width: 0;
+    max-width: none;
+    padding: 4px;
+    border: 0;
+  }
+  .tool-page .log-table td:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  .tool-page .log-table td:nth-child(4) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .tool-page .log-table td:last-child {
+    grid-column: 4;
+    grid-row: 1;
+  }
+}

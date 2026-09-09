@@ -1,0 +1,232 @@
+.byte-inspector,
+.byte-composer {
+  min-width: 0;
+  container-type: inline-size;
+}
+.byte-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+.byte-toolbar strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.byte-toolbar strong span {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.byte-toggle,
+.byte-formats label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.byte-grid {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+  margin: 8px 0;
+}
+.byte-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border-bottom: 2px solid var(--line);
+  background: var(--canvas);
+}
+.byte-cell small {
+  font:
+    10px/16px "Cascadia Code",
+    Consolas,
+    monospace;
+  color: var(--muted);
+}
+.byte-cell code {
+  font-size: 13px;
+  line-height: 22px;
+}
+.byte-padding {
+  border-bottom-style: dashed;
+  background: transparent;
+  color: var(--muted);
+}
+.byte-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  padding: 3px 0 9px;
+  margin: 0;
+  border: 0;
+}
+.byte-formats label:has(input:checked) {
+  color: var(--ink);
+}
+.byte-readings {
+  border-top: 1px solid var(--line);
+}
+.byte-reading {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 32px;
+  align-items: start;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+.byte-reading-label {
+  padding-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.byte-reading-value {
+  min-width: 0;
+  padding-top: 3px;
+}
+.byte-reading-value code {
+  display: block;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.byte-reading-value small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.byte-reading .icon-button.btn {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  height: 32px;
+  min-height: 32px;
+}
+.byte-decode-error {
+  display: flex;
+  align-items: start;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.byte-decode-error svg {
+  margin-top: 3px;
+}
+.byte-copy-status {
+  display: block;
+  min-height: 18px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.byte-encoding-select {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+  max-width: 260px;
+  font-size: 12px;
+}
+.byte-encoding-select > span {
+  white-space: nowrap;
+  color: var(--muted);
+}
+.byte-input-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.byte-composer textarea {
+  display: block;
+  min-height: 86px;
+  line-height: 1.6;
+}
+.byte-composer textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.byte-composer-status {
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.byte-composer-error {
+  justify-content: start;
+  flex-wrap: nowrap;
+  color: var(--danger);
+}
+.byte-composer-error svg {
+  margin-top: 2px;
+}
+.byte-write-preview {
+  margin-top: 7px;
+}
+.byte-empty {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.byte-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.byte-applied {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  color: var(--success);
+  font-size: 12px;
+}
+@container (max-width: 460px) {
+  .byte-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+  .byte-reading {
+    grid-template-columns: 66px minmax(0, 1fr) 32px;
+    gap: 7px;
+  }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .byte-formats label,
+  .byte-toggle {
+    min-height: 44px;
+  }
+  .byte-reading {
+    grid-template-columns: 66px minmax(0, 1fr) 44px;
+  }
+  .byte-reading .icon-button.btn {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+  }
+}

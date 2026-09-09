@@ -1,0 +1,79 @@
+.window-controls {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: center;
+  gap: 2px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
+.window-control-button,
+.window-drag-handle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  min-height: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.window-drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.window-drag-handle:active {
+  cursor: grabbing;
+}
+
+.window-control-button:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.window-control-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.window-close-button:hover:not(:disabled) {
+  color: #fff;
+  background: #bb2636;
+}
+
+.window-control-button:disabled {
+  opacity: 0.5;
+}
+
+.window-control-error {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  width: min(320px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  .window-control-button,
+  .window-drag-handle {
+    flex-basis: 44px;
+    width: 44px;
+    min-height: 44px;
+  }
+}

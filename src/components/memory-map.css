@@ -1,0 +1,207 @@
+.memory-map {
+  width: 100%;
+  min-width: 0;
+  max-width: 280px;
+  align-self: start;
+  padding-right: 18px;
+  border-right: 1px solid var(--line);
+}
+.memory-map .memory-map-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.memory-map .memory-map-heading h2 {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.memory-map .memory-map-heading > span {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.memory-map .memory-map-toggle {
+  display: none;
+}
+.memory-map .memory-map-panel {
+  min-width: 0;
+}
+.memory-map .block-map-head,
+.memory-map .sector-row {
+  display: grid;
+  grid-template-columns: 27px repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+}
+.memory-map .block-map-head {
+  margin-bottom: 7px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+.memory-map .block-map-head > :first-child {
+  text-align: left;
+}
+.memory-map .block-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.memory-map .memory-map-sector {
+  font:
+    11px/1.4 "Cascadia Code",
+    Consolas,
+    monospace;
+  color: var(--muted);
+}
+.memory-map .block-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  background: var(--surface);
+  font:
+    12px/1 "Cascadia Code",
+    Consolas,
+    monospace;
+}
+.memory-map .block-cell:hover:not(:disabled):not(.selected) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.memory-map .block-cell.trailer {
+  background: color-mix(in oklab, var(--color-warning) 7%, var(--surface));
+}
+.memory-map .block-cell svg {
+  width: 11px;
+  height: 11px;
+  color: var(--muted);
+  opacity: 1;
+}
+.memory-map .block-cell.selected {
+  border-color: var(--accent);
+  color: var(--color-primary-content);
+  background: var(--accent);
+  font-weight: 600;
+}
+.memory-map .block-cell.selected svg {
+  color: currentColor;
+}
+.memory-map .block-cell.has-data::after {
+  content: "";
+  position: absolute;
+  inset: 3px 3px auto auto;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.memory-map .block-cell.selected.has-data::after {
+  background: currentColor;
+}
+.memory-map .block-cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.memory-map .memory-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 13px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.memory-map .memory-map-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.memory-map .memory-map-read-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+}
+@media (max-width: 1100px) {
+  .memory-map {
+    max-width: none;
+    padding-right: 0;
+    border-right: 0;
+    border-block: 1px solid var(--line);
+  }
+  .memory-map .memory-map-heading {
+    display: none;
+  }
+  .memory-map .memory-map-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 0;
+    border: 0;
+    border-radius: 0;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+  }
+  .memory-map .memory-map-toggle:hover {
+    color: var(--accent-ink);
+  }
+  .memory-map .memory-map-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+  .memory-map .memory-map-summary strong {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .memory-map .memory-map-summary > span,
+  .memory-map .memory-map-progress {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .memory-map .memory-map-progress {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .memory-map .memory-map-panel {
+    display: none;
+    padding: 0 0 14px;
+  }
+  .memory-map.is-expanded .memory-map-panel {
+    display: block;
+  }
+  .memory-map.is-expanded .memory-map-chevron {
+    transform: rotate(180deg);
+  }
+  .memory-map .block-map-head {
+    display: none;
+  }
+  .memory-map .block-map {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 236px), 1fr));
+    gap: 8px 14px;
+  }
+  .memory-map .sector-row {
+    grid-template-columns: 27px repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .memory-map .block-cell {
+    height: 44px;
+    font-size: 12px;
+  }
+}

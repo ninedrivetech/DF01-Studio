@@ -1,0 +1,458 @@
+/* Desktop tools share the workbench's first-screen rhythm. Small screens retain flow. */
+@media (min-width: 900px) and (min-height: 600px) {
+  main.memory-page,
+  main.appearance-page {
+    --page-pad: 14px;
+    display: flex;
+    flex-direction: column;
+    padding-top: 7px;
+    padding-bottom: 8px;
+  }
+  main:is(.memory-page, .appearance-page) .page-heading {
+    margin-bottom: 7px;
+    flex-shrink: 0;
+  }
+  main:is(.memory-page, .appearance-page) h1 {
+    font-size: 21px;
+  }
+  main:is(.memory-page, .appearance-page) .eyebrow,
+  main:is(.memory-page, .appearance-page) .protocol-strip {
+    display: none;
+  }
+  main:is(.memory-page, .appearance-page) .connection-strip {
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    gap: 8px;
+    flex-shrink: 0;
+    grid-template-columns: 94px minmax(130px, 1fr) 72px 54px auto;
+  }
+  main:is(.memory-page, .appearance-page) .connection-icon {
+    display: none;
+  }
+  main:is(.memory-page, .appearance-page) .connection-strip .field {
+    gap: 4px;
+  }
+  main:is(.memory-page, .appearance-page) .connection-strip input,
+  main:is(.memory-page, .appearance-page) .connection-strip select {
+    min-height: 32px;
+    height: 32px;
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+  main:is(.memory-page, .appearance-page) .button.btn {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  main:is(.memory-page, .appearance-page) .icon-button.btn {
+    min-height: 28px;
+    height: 28px;
+    min-width: 28px;
+    width: 28px;
+  }
+  main:is(.memory-page, .appearance-page) .section {
+    margin-bottom: 0;
+  }
+  main:is(.memory-page, .appearance-page) .section-heading {
+    margin-bottom: 8px;
+    min-height: 28px;
+  }
+  main:is(.memory-page, .appearance-page) > .page-content {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .appearance-page .page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .appearance-page .theme-grid {
+    gap: 10px;
+    padding: 0;
+  }
+  .appearance-page .theme-option {
+    padding: 6px;
+  }
+  .appearance-page .theme-sample {
+    height: clamp(48px, 8vh, 80px);
+    aspect-ratio: auto;
+    padding: 10px;
+  }
+  .appearance-page .theme-name {
+    padding: 8px 3px 4px;
+    gap: 5px;
+  }
+  .appearance-page .theme-description {
+    margin: 0;
+    padding: 0 3px 4px;
+    font-size: 11px;
+  }
+  .appearance-page .appearance-preferences {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+  }
+  .appearance-page .appearance-preferences .section-heading {
+    grid-column: 1 / -1;
+  }
+  .appearance-page .setting-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    gap: 12px;
+    border-bottom: 0;
+  }
+  .appearance-page .setting-row h3 {
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .appearance-page .setting-row > select {
+    width: 150px;
+    min-height: 34px;
+  }
+  .appearance-page .about-band {
+    margin-top: auto;
+    padding-top: 10px;
+    min-height: 54px;
+  }
+
+  .memory-page .memory-workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 8px;
+  }
+  .memory-page .memory-modebar {
+    margin: 0;
+    padding-bottom: 6px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .memory-page .memory-modebar .segmented button {
+    min-height: 30px;
+    padding: 4px 10px;
+  }
+  .memory-page .memory-layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: clamp(228px, 24vw, 320px) minmax(0, 1fr);
+    grid-template-rows: auto minmax(120px, 1fr);
+    gap: 8px 14px;
+    align-items: stretch;
+  }
+  .memory-page .block-editor-column {
+    display: contents;
+  }
+  .memory-page .memory-map {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: none;
+    padding: 0;
+    border: 0;
+  }
+  .memory-page .memory-map-heading {
+    display: flex;
+    margin-bottom: 6px;
+  }
+  .memory-page .memory-map-toggle,
+  .memory-page .block-map-head {
+    display: none;
+  }
+  .memory-page .memory-map-panel {
+    display: block;
+    padding: 0;
+  }
+  .memory-page .block-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 8px;
+  }
+  .memory-page .sector-row {
+    grid-template-columns: 16px repeat(4, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .memory-page .memory-map-sector {
+    font-size: 10px;
+  }
+  .memory-page .block-cell {
+    height: 26px;
+    font-size: 11px;
+  }
+  .memory-page .block-cell svg {
+    display: none;
+  }
+  .memory-page .block-cell.trailer {
+    border-bottom: 2px solid var(--color-warning);
+  }
+  .memory-page .memory-map-legend {
+    margin-top: 6px;
+    gap: 10px;
+  }
+  .memory-page .memory-block-section {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    container-type: normal;
+  }
+  .memory-page .memory-block-heading {
+    flex-shrink: 0;
+    min-height: 32px;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .memory-page .memory-block-identity {
+    gap: 5px;
+  }
+  .memory-page .memory-block-identity h2 {
+    font-size: 16px;
+  }
+  .memory-page .memory-block-identity .tag {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  .memory-page .editor-actions {
+    gap: 3px;
+  }
+  .memory-page .editor-toolbar {
+    flex-shrink: 0;
+    margin-bottom: 6px;
+    gap: 5px;
+  }
+  .memory-page .editor-toolbar .segmented button {
+    padding: 4px 10px;
+    min-height: 28px;
+  }
+  .memory-page .hex-editor {
+    padding: 6px;
+    gap: 5px;
+  }
+  .memory-page .byte-field {
+    gap: 2px;
+  }
+  .memory-page .byte-field input {
+    height: 28px;
+    min-height: 28px;
+    font-size: 13px;
+    padding: 3px;
+  }
+  .memory-page .byte-inspector {
+    flex: 1;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    container-type: normal;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+  .memory-page .byte-toolbar {
+    flex-shrink: 0;
+    margin-bottom: 4px;
+    gap: 4px;
+  }
+  .memory-page .byte-toolbar strong {
+    font-size: 12px;
+  }
+  .memory-page .byte-toggle,
+  .memory-page .byte-formats label {
+    min-height: 24px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .memory-page .byte-formats {
+    flex-shrink: 0;
+    display: flex;
+    gap: 0 8px;
+    padding: 0 0 4px;
+  }
+  .memory-page .byte-readings {
+    min-height: 35px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .memory-page .byte-reading {
+    grid-template-columns: 52px minmax(0, 1fr) 28px;
+    gap: 4px;
+    min-height: 30px;
+    padding: 3px 0;
+  }
+  .memory-page .byte-reading-label {
+    font-size: 10px;
+  }
+  .memory-page .byte-reading-value code {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .memory-page .byte-reading-value small {
+    font-size: 10px;
+  }
+  .memory-page .byte-copy-status:empty {
+    display: none;
+  }
+  .memory-page .memory-sector-section {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    padding-top: 6px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .memory-page .memory-sector-section .section-heading {
+    margin-bottom: 2px;
+  }
+  .memory-page .sector-data > div {
+    min-height: 20px;
+    padding: 3px 0;
+    gap: 6px;
+  }
+  .memory-page .sector-data code {
+    font-size: 10px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .memory-page .record-origin {
+    margin-top: 4px;
+    font-size: 10px;
+  }
+  .memory-page .byte-composer {
+    container-type: normal;
+    position: relative;
+  }
+  .memory-page .byte-composer > .byte-input-label {
+    position: absolute;
+    top: 6px;
+    right: 40px;
+    margin: 0;
+  }
+  .memory-page .byte-composer .byte-encoding-select {
+    max-width: min(260px, calc(100% - 116px));
+  }
+  .memory-page .byte-composer textarea {
+    min-height: 40px;
+    height: 40px;
+    resize: vertical;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .memory-page .byte-encoding-select select {
+    min-height: 28px;
+    height: 28px;
+    padding: 3px 6px;
+    font-size: 12px;
+  }
+  .memory-page .byte-input-label {
+    margin-bottom: 3px;
+    font-size: 11px;
+  }
+  .memory-page .byte-composer-status {
+    min-height: 22px;
+    padding: 3px 0;
+    font-size: 11px;
+  }
+  .memory-page .byte-write-preview {
+    margin-top: 2px;
+  }
+  .memory-page .byte-grid {
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    margin: 3px 0;
+    gap: 2px;
+  }
+  .memory-page .byte-cell {
+    min-height: 32px;
+  }
+  .memory-page .byte-cell code {
+    font-size: 11px;
+    line-height: 16px;
+  }
+  .memory-page .byte-cell small {
+    font-size: 9px;
+    line-height: 12px;
+  }
+  .memory-page .byte-composer-actions {
+    margin-top: 3px;
+  }
+  .memory-page .inline-warning {
+    margin: 5px 0;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  .memory-page .frame-preview {
+    margin-top: 5px;
+    padding: 5px 8px;
+    max-height: 54px;
+    overflow-y: auto;
+  }
+  .memory-page .batch-progress {
+    margin: 0;
+    padding: 3px 8px;
+    min-height: 32px;
+  }
+  .memory-page .memory-pages-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .memory-page .memory-pages-section .sector-data {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .memory-page .page-address {
+    margin: 0 0 6px;
+  }
+}
+
+.gain-easter-egg {
+  --fly-wing: color-mix(in oklab, var(--accent) 24%, var(--surface));
+  --fly-outline: var(--accent-ink);
+  --fly-body: var(--accent);
+  --fly-stripe: var(--color-primary-content);
+  position: fixed;
+  z-index: 75;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border: 1px solid var(--accent-ink);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 18%, transparent);
+  animation: fly-awaken 240ms ease-out;
+}
+.gain-easter-egg > svg {
+  flex-shrink: 0;
+}
+.gain-easter-egg p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.gain-easter-egg .icon-button.btn {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.gain-easter-egg .icon-button.btn:hover {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+@keyframes fly-awaken {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

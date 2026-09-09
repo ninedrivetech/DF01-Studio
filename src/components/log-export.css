@@ -1,0 +1,144 @@
+.log-export-dialog {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 16px 64px #0003;
+  overflow: hidden;
+}
+.log-export-dialog[open],
+.log-export-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.log-export-dialog::backdrop {
+  background: #0008;
+}
+.log-export-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.log-export-heading > svg {
+  color: var(--accent-ink);
+}
+.log-export-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.log-export-heading h2 {
+  font-size: 18px;
+}
+.log-export-heading p,
+.log-export-body small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.log-export-heading p {
+  margin-top: 4px;
+}
+.log-export-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 3px;
+}
+.log-export-filename {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.log-export-filename input {
+  flex: 1;
+  min-width: 0;
+}
+.log-export-filename > span {
+  color: var(--muted);
+  font-family: Consolas, monospace;
+}
+.log-export-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.log-export-location svg {
+  color: var(--accent-ink);
+  margin-top: 2px;
+}
+.log-export-location p,
+.log-export-scope p,
+.log-export-success p {
+  overflow-wrap: anywhere;
+  margin: 4px 0 0;
+}
+.log-export-location span,
+.log-export-scope > span,
+.log-export-preview > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.log-export-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--canvas);
+  margin: 6px 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.log-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  flex-shrink: 0;
+}
+.log-export-error {
+  color: var(--danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.log-export-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 8px;
+  overflow-y: auto;
+  min-height: 0;
+  text-align: center;
+}
+.log-export-success svg {
+  color: var(--accent-ink);
+}
+.log-export-success p {
+  max-width: 100%;
+  font-size: 13px;
+}
+@media (max-width: 480px), (max-height: 500px) {
+  .log-export-dialog {
+    padding: 14px;
+  }
+  .log-export-dialog[open],
+  .log-export-dialog form {
+    gap: 12px;
+  }
+  .log-export-preview pre {
+    max-height: 130px;
+  }
+}
