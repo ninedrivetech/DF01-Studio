@@ -1,0 +1,724 @@
+{
+  "exportedAt": "2026-09-09T16:46:49.839Z",
+  "connection": {
+    "connected": true,
+    "simulation": true,
+    "port": "DF-01 Simulator",
+    "baudRate": 115200,
+    "address": 0,
+    "profile": "current"
+  },
+  "logs": [
+    {
+      "id": 1,
+      "timestamp": 1788972397516,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "模拟设备已连接",
+      "level": "success"
+    },
+    {
+      "id": 2,
+      "timestamp": 1788972397547,
+      "direction": "tx",
+      "command": 49,
+      "hex": "7F 03 00 31 32",
+      "message": "发送 读取全部配置",
+      "level": "info"
+    },
+    {
+      "id": 3,
+      "timestamp": 1788972397618,
+      "direction": "rx",
+      "command": 177,
+      "hex": "[配置含密钥，帧已隐藏]",
+      "message": "读取全部配置：成功",
+      "level": "success"
+    },
+    {
+      "id": 4,
+      "timestamp": 1788972397679,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 E0 45 AF AB 3F",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 5,
+      "timestamp": 1788972398043,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 01 0B 01 00 00 00 01 23 12 54 4C",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 6,
+      "timestamp": 1788972398085,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 7,
+      "timestamp": 1788972398912,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 02 0C 01 00 00 00 01 23 12 54 48",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 8,
+      "timestamp": 1788972398956,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 9,
+      "timestamp": 1788972399049,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 2F",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 10,
+      "timestamp": 1788972399391,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 02 0C 01 00 00 00 01 23 12 54 48",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 11,
+      "timestamp": 1788972399434,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 12,
+      "timestamp": 1788972399528,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 2F",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 13,
+      "timestamp": 1788972401013,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 02 0C 01 00 00 00 01 23 12 54 48",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 14,
+      "timestamp": 1788972401055,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 15,
+      "timestamp": 1788972401148,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 2F",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 16,
+      "timestamp": 1788972404109,
+      "direction": "tx",
+      "command": 48,
+      "hex": "7F 04 00 30 07 33",
+      "message": "发送 设置天线增益",
+      "level": "info"
+    },
+    {
+      "id": 17,
+      "timestamp": 1788972404152,
+      "direction": "rx",
+      "command": 176,
+      "hex": "7F 05 00 B0 00 07 B2",
+      "message": "设置天线增益：成功",
+      "level": "success"
+    },
+    {
+      "id": 18,
+      "timestamp": 1788972404348,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F E9 03 C0",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 19,
+      "timestamp": 1788972404391,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 20,
+      "timestamp": 1788972404485,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 2F",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 21,
+      "timestamp": 1788972404619,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F 00 00 2A",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 22,
+      "timestamp": 1788972404661,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 23,
+      "timestamp": 1788972404755,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 2F",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 24,
+      "timestamp": 1788972405459,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 01 0B 01 00 00 00 01 23 12 54 4C",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 25,
+      "timestamp": 1788972405501,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 26,
+      "timestamp": 1788972405563,
+      "direction": "tx",
+      "command": 16,
+      "hex": "7F 03 00 10 13",
+      "message": "发送 读卡号",
+      "level": "info"
+    },
+    {
+      "id": 27,
+      "timestamp": 1788972405611,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 E0 45 AF AB 3F",
+      "message": "读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 28,
+      "timestamp": 1788972405653,
+      "direction": "tx",
+      "command": 18,
+      "hex": "7F 14 00 12 01 7F 7F 01 02 7F 7F 04 05 7F 7F 07 08 7F 7F 0A 0B 7F 7F 0D 0E 7F 7F 08",
+      "message": "发送 写块数据",
+      "level": "info"
+    },
+    {
+      "id": 29,
+      "timestamp": 1788972405701,
+      "direction": "rx",
+      "command": 146,
+      "hex": "7F 0A 00 92 00 04 00 E0 45 AF AB 3D",
+      "message": "写块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 30,
+      "timestamp": 1788972405751,
+      "direction": "tx",
+      "command": 17,
+      "hex": "7F 04 00 11 01 14",
+      "message": "发送 读块数据",
+      "level": "info"
+    },
+    {
+      "id": 31,
+      "timestamp": 1788972405821,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 7F 7F 01 02 7F 7F 04 05 7F 7F 07 08 7F 7F 0A 0B 7F 7F 0D 0E 7F 7F 21",
+      "message": "读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 32,
+      "timestamp": 1788972405873,
+      "direction": "tx",
+      "command": 43,
+      "hex": "[密钥帧已隐藏]",
+      "message": "发送 装载密钥",
+      "level": "info"
+    },
+    {
+      "id": 33,
+      "timestamp": 1788972405916,
+      "direction": "rx",
+      "command": 171,
+      "hex": "7F 04 00 AB 00 AF",
+      "message": "装载密钥：成功",
+      "level": "success"
+    },
+    {
+      "id": 34,
+      "timestamp": 1788972405979,
+      "direction": "tx",
+      "command": 49,
+      "hex": "7F 03 00 31 32",
+      "message": "发送 读取全部配置",
+      "level": "info"
+    },
+    {
+      "id": 35,
+      "timestamp": 1788972406050,
+      "direction": "rx",
+      "command": 177,
+      "hex": "[配置含密钥，帧已隐藏]",
+      "message": "读取全部配置：成功",
+      "level": "success"
+    },
+    {
+      "id": 36,
+      "timestamp": 1788972406122,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F 64 00 4E",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 37,
+      "timestamp": 1788972406166,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 38,
+      "timestamp": 1788972406207,
+      "direction": "tx",
+      "command": 48,
+      "hex": "7F 04 00 30 07 33",
+      "message": "发送 设置天线增益",
+      "level": "info"
+    },
+    {
+      "id": 39,
+      "timestamp": 1788972406251,
+      "direction": "rx",
+      "command": 176,
+      "hex": "7F 05 00 B0 00 07 B2",
+      "message": "设置天线增益：成功",
+      "level": "success"
+    },
+    {
+      "id": 40,
+      "timestamp": 1788972406292,
+      "direction": "tx",
+      "command": 49,
+      "hex": "7F 03 00 31 32",
+      "message": "发送 读取全部配置",
+      "level": "info"
+    },
+    {
+      "id": 41,
+      "timestamp": 1788972406362,
+      "direction": "rx",
+      "command": 177,
+      "hex": "[配置含密钥，帧已隐藏]",
+      "message": "读取全部配置：成功",
+      "level": "success"
+    },
+    {
+      "id": 42,
+      "timestamp": 1788972406455,
+      "direction": "tx",
+      "command": 45,
+      "hex": "7F 07 00 2D 7F 7F 37 21 56 15",
+      "message": "发送 设置地址",
+      "level": "info"
+    },
+    {
+      "id": 43,
+      "timestamp": 1788972406497,
+      "direction": "rx",
+      "command": 173,
+      "hex": "7F 04 7F 7F AD 00 D6",
+      "message": "设置地址：成功",
+      "level": "success"
+    },
+    {
+      "id": 44,
+      "timestamp": 1788972406548,
+      "direction": "tx",
+      "command": 49,
+      "hex": "7F 03 7F 7F 31 4D",
+      "message": "发送 读取全部配置",
+      "level": "info"
+    },
+    {
+      "id": 45,
+      "timestamp": 1788972406618,
+      "direction": "rx",
+      "command": 177,
+      "hex": "[配置含密钥，帧已隐藏]",
+      "message": "读取全部配置：成功",
+      "level": "success"
+    },
+    {
+      "id": 46,
+      "timestamp": 1788972406681,
+      "direction": "tx",
+      "command": 45,
+      "hex": "7F 07 7F 7F 2D 00 37 21 56 15",
+      "message": "发送 设置地址",
+      "level": "info"
+    },
+    {
+      "id": 47,
+      "timestamp": 1788972406724,
+      "direction": "rx",
+      "command": 173,
+      "hex": "7F 04 00 AD 00 A9",
+      "message": "设置地址：成功",
+      "level": "success"
+    },
+    {
+      "id": 48,
+      "timestamp": 1788972406821,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "模拟卡片已移开",
+      "level": "info"
+    },
+    {
+      "id": 49,
+      "timestamp": 1788972406889,
+      "direction": "tx",
+      "command": 16,
+      "hex": "7F 03 00 10 13",
+      "message": "发送 读卡号",
+      "level": "info"
+    },
+    {
+      "id": 50,
+      "timestamp": 1788972406932,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 04 00 90 FF 6B",
+      "message": "读卡号：未检测到卡片",
+      "level": "warning"
+    },
+    {
+      "id": 51,
+      "timestamp": 1788972406944,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "模拟卡片已放入",
+      "level": "info"
+    },
+    {
+      "id": 52,
+      "timestamp": 1788972406983,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F 00 00 2A",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 53,
+      "timestamp": 1788972407026,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 54,
+      "timestamp": 1788972407088,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 00 0A 01 00 00 00 00 23 12 54 4D",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 55,
+      "timestamp": 1788972407130,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 56,
+      "timestamp": 1788972407192,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 E0 45 AF AB 3F",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 57,
+      "timestamp": 1788972407219,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "模拟卡片已移开",
+      "level": "info"
+    },
+    {
+      "id": 58,
+      "timestamp": 1788972407281,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "模拟卡片已放入",
+      "level": "info"
+    },
+    {
+      "id": 59,
+      "timestamp": 1788972407519,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "已换入另一张模拟卡片",
+      "level": "info"
+    },
+    {
+      "id": 60,
+      "timestamp": 1788972407589,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 61,
+      "timestamp": 1788972407703,
+      "direction": "tx",
+      "command": 16,
+      "hex": "7F 03 00 10 13",
+      "message": "发送 读卡号",
+      "level": "info"
+    },
+    {
+      "id": 62,
+      "timestamp": 1788972407750,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 63,
+      "timestamp": 1788972407813,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 64,
+      "timestamp": 1788972407884,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F 64 00 4E",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 65,
+      "timestamp": 1788972407927,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 66,
+      "timestamp": 1788972407989,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 67,
+      "timestamp": 1788972408092,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 68,
+      "timestamp": 1788972408173,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 69,
+      "timestamp": 1788972408203,
+      "direction": "tx",
+      "command": 47,
+      "hex": "7F 05 00 2F 00 00 2A",
+      "message": "发送 设置防重读时长",
+      "level": "info"
+    },
+    {
+      "id": 70,
+      "timestamp": 1788972408246,
+      "direction": "rx",
+      "command": 175,
+      "hex": "7F 04 00 AF 00 AB",
+      "message": "设置防重读时长：成功",
+      "level": "success"
+    },
+    {
+      "id": 71,
+      "timestamp": 1788972408285,
+      "direction": "rx",
+      "command": 144,
+      "hex": "7F 0A 00 90 00 04 00 AA BB CC DD 9E",
+      "message": "主动上报 · 读卡号：成功",
+      "level": "success"
+    },
+    {
+      "id": 72,
+      "timestamp": 1788972408316,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 02 0C 01 00 00 00 00 23 12 54 49",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 73,
+      "timestamp": 1788972408358,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 74,
+      "timestamp": 1788972408369,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "已换入另一张模拟卡片",
+      "level": "info"
+    },
+    {
+      "id": 75,
+      "timestamp": 1788972408453,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 AA BB CC DD 44 46 2D 30 31 20 46 52 55 49 54 46 4C 59 00 00 8E",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 76,
+      "timestamp": 1788972408566,
+      "direction": "rx",
+      "command": 145,
+      "hex": "7F 1A 00 91 00 04 00 E0 45 AF AB 7F 7F 01 02 7F 7F 04 05 7F 7F 07 08 7F 7F 0A 0B 7F 7F 0D 0E 7F 7F 21",
+      "message": "主动上报 · 读块数据：成功",
+      "level": "success"
+    },
+    {
+      "id": 77,
+      "timestamp": 1788972408721,
+      "direction": "tx",
+      "command": 46,
+      "hex": "7F 0D 00 2E 01 0B 01 00 00 00 00 23 12 54 4D",
+      "message": "发送 设置自动方式",
+      "level": "info"
+    },
+    {
+      "id": 78,
+      "timestamp": 1788972408763,
+      "direction": "rx",
+      "command": 174,
+      "hex": "7F 04 00 AE 00 AA",
+      "message": "设置自动方式：成功",
+      "level": "success"
+    },
+    {
+      "id": 79,
+      "timestamp": 1788972408794,
+      "direction": "system",
+      "command": null,
+      "hex": "",
+      "message": "已换入另一张模拟卡片",
+      "level": "info"
+    }
+  ]
+}
