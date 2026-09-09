@@ -1,0 +1,42 @@
+{
+  "name": "df01-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "bundle": "tauri build",
+    "package:portable": "node scripts/package-portable.mjs",
+    "notices": "node scripts/generate-notices.mjs",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:scripts": "node --test scripts/tests/package-portable.test.mjs",
+    "format": "prettier --write src vite.config.ts vitest.config.ts playwright.config.ts"
+  },
+  "dependencies": {
+    "@kayahr/text-encoding": "^2.2.0",
+    "@tauri-apps/api": "^2.8.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@tauri-apps/cli": "^2.8.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "daisyui": "^5.0.0",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.0",
+    "vitest": "^3.2.0"
+  }
+}

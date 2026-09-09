@@ -1,0 +1,23 @@
+[package]
+name = "df01-studio"
+version = "1.0.0"
+description = "Fruitfly No. 1 / DF-01 desktop workstation"
+authors = ["Cans518 <798061533@qq.com>"]
+edition = "2021"
+
+[lib]
+name = "df01_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serialport = "4"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

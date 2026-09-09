@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "果蝇1号",
+  "version": "1.0.0",
+  "identifier": "com.df01.studio",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "果蝇1号 · DF-01",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 640,
+        "decorations": false,
+        "center": true,
+        "backgroundColor": "#101417"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost; script-src 'self'",
+      "devCsp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420; script-src 'self' 'unsafe-inline'",
+      "capabilities": ["main-capability"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "resources": {
+      "../README.md": "README.md",
+      "../THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt",
+      "../docs/PROTOCOL.md": "docs/PROTOCOL.md",
+      "../docs/ACCEPTANCE.md": "docs/ACCEPTANCE.md",
+      "../docs/VERIFICATION.md": "docs/VERIFICATION.md",
+      "../docs/THIRD_PARTY.md": "docs/THIRD_PARTY.md",
+      "../docs/指令和参数表.md": "docs/command-table.md",
+      "../docs/USER_GUIDE.md": "docs/USER_GUIDE.md"
+    },
+    "targets": ["nsis"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "shortDescription": "果蝇1号 DF-01 串口感知工作台",
+    "category": "DeveloperTool",
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true,
+        "languages": ["SimpChinese", "English"]
+      }
+    }
+  }
+}
