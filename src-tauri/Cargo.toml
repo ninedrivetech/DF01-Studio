@@ -1,8 +1,8 @@
 [package]
 name = "df01-studio"
-version = "1.0.0"
+version = "1.1.1"
 description = "Fruitfly No. 1 / DF-01 desktop workstation"
-authors = ["Cans518 <798061533@qq.com>"]
+authors = ["Mzee <xiemaths@outlook.com>"]
 edition = "2021"
 
 [lib]

@@ -421,6 +421,297 @@ fn configuration_read_parses_offsets_and_redacts_keys_with_split_escaped_bytes()
 }
 
 #[test]
+fn configuration_versions_accept_new_mode_without_enabling_unsupported_commands() {
+    let base = vec![
+        0, 0, 0, 0xc2, 1, 0, 3, 4, 1, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        255, 255, 0, 0, 7,
+    ];
+    for (extension, product_mode) in [
+        (vec![], None),
+        (vec![0xe8, 3, 0xc8, 0], None),
+        (vec![0xe8, 3, 0xc8, 0, 0], Some(0)),
+        (vec![0xe8, 3, 0xc8, 0, 1], Some(1)),
+        (vec![0xc4, 9, 0xe8, 3, 1, 60], Some(1)),
+    ] {
+        let core = Mutex::new(Core::default());
+        let mut parameters = base.clone();
+        parameters.extend(extension);
+        let (mut transport, _) = mock_transport(response(0, 0xb1, &parameters), 1);
+        transaction(
+            &mut transport,
+            &mut Decoder::default(),
+            &core,
+            &request(0x31, vec![]),
+        )
+        .unwrap();
+        let state = core.lock().unwrap();
+        let saved = state.configuration.as_ref().unwrap();
+        assert_eq!(saved.product_mode, product_mode);
+        assert_eq!(saved.initial_duty_percent, parameters.get(32).copied());
+        assert_eq!(saved.auto_mode, 3);
+        assert_eq!(saved.auto_block, 4);
+        assert_eq!(saved.key_a, vec![255; 6]);
+        assert!(state.logs.iter().all(|log| !log.hex.contains("FF FF")));
+    }
+    for length in [28, 29, 30, 34] {
+        let mut parameters = base.clone();
+        parameters.resize(length, 0);
+        let core = Mutex::new(Core::default());
+        assert!(record_frame(
+            &core,
+            Ok(Frame {
+                address: 0,
+                command: 0xb1,
+                parameters
+            }),
+            None
+        )
+        .is_none());
+        assert!(core.lock().unwrap().configuration.is_none());
+    }
+    assert!(validate(&request(0x2e, vec![3, 13, 4, 1, 0, 0, 0, 0x23, 0x12, 0x54])).is_ok());
+    assert!(validate(&request(0x32, vec![0xe8, 3, 0xc8, 0])).is_ok());
+}
+
+#[test]
+fn voice_settings_support_both_products_and_only_success_changes_saved_values() {
+    let req = request(0x2e, vec![3, 13, 4, 5, 1, 9, 8, 0x23, 0x12, 0x54]);
+    for product_mode in [None, Some(2)] {
+        let core = Mutex::new(Core {
+            configuration: Some(DeviceConfiguration {
+                product_mode,
+                ..DeviceConfiguration::default()
+            }),
+            ..Core::default()
+        });
+        let (mut transport, port) = mock_transport(response(0, 0xae, &[0]), 1);
+        assert_eq!(
+            transaction(&mut transport, &mut Decoder::default(), &core, &req)
+                .unwrap_err()
+                .code,
+            "unsupported_product"
+        );
+        assert!(port.lock().unwrap().writes.is_empty());
+    }
+    for product_mode in [Some(0), Some(1)] {
+        let core = Mutex::new(Core {
+            configuration: Some(DeviceConfiguration {
+                product_mode,
+                ..DeviceConfiguration::default()
+            }),
+            ..Core::default()
+        });
+        let (mut transport, port) = mock_transport(response(0, 0xae, &[0]), 1);
+        assert_eq!(
+            transaction(&mut transport, &mut Decoder::default(), &core, &req)
+                .unwrap()
+                .status,
+            0
+        );
+        assert_eq!(
+            port.lock().unwrap().writes,
+            vec![encode(&Frame {
+                address: 0,
+                command: 0x2e,
+                parameters: req.parameters.clone()
+            })
+            .unwrap()]
+        );
+        {
+            let state = core.lock().unwrap();
+            let saved = state.configuration.as_ref().unwrap();
+            assert_eq!(state.auto_mode, Some(3));
+            assert_eq!(saved.auto_mode, 3);
+            assert_eq!(saved.auto_initial_value, vec![5, 1, 9, 8]);
+        }
+        let (mut transport, _) = mock_transport(response(0, 0xae, &[0xfe]), 1);
+        let rejected = request(0x2e, vec![3, 13, 8, 1, 0, 9, 8, 0x23, 0x12, 0x54]);
+        assert_eq!(
+            transaction(&mut transport, &mut Decoder::default(), &core, &rejected)
+                .unwrap()
+                .status,
+            0xfe
+        );
+        let state = core.lock().unwrap();
+        let saved = state.configuration.as_ref().unwrap();
+        assert_eq!(saved.auto_block, 4);
+        assert_eq!(saved.auto_initial_value, vec![5, 1, 9, 8]);
+        assert_eq!(saved.product_mode, product_mode);
+    }
+}
+
+#[test]
+fn duty_ack_validates_success_and_preserves_configuration_on_failure() {
+    let core = Mutex::new(Core {
+        configuration: Some(DeviceConfiguration::default()),
+        ..Core::default()
+    });
+    let req = request(0x33, vec![75]);
+    for (reply, expected) in [(vec![0, 75], 75), (vec![0xfe, 60], 75)] {
+        let (mut transport, _) = mock_transport(response(0, 0xb3, &reply), 1);
+        transaction(&mut transport, &mut Decoder::default(), &core, &req).unwrap();
+        assert_eq!(
+            core.lock()
+                .unwrap()
+                .configuration
+                .as_ref()
+                .unwrap()
+                .initial_duty_percent,
+            Some(expected)
+        );
+    }
+    for parameters in [vec![0], vec![0, 101], vec![0, 60, 0]] {
+        assert!(record_frame(
+            &core,
+            Ok(Frame {
+                address: 0,
+                command: 0xb3,
+                parameters
+            }),
+            Some(&req)
+        )
+        .is_none());
+    }
+    core.lock()
+        .unwrap()
+        .configuration
+        .as_mut()
+        .unwrap()
+        .initial_duty_percent = None;
+    let (mut transport, port) = mock_transport(response(0, 0xb3, &[0, 75]), 1);
+    assert_eq!(
+        transaction(&mut transport, &mut Decoder::default(), &core, &req)
+            .unwrap_err()
+            .code,
+        "unsupported_firmware"
+    );
+    assert!(port.lock().unwrap().writes.is_empty());
+}
+
+#[test]
+fn startup_settings_require_product_readback_and_a_valid_success_ack() {
+    let req = request(0x32, vec![0xe8, 3, 0xc8, 0]);
+    let core = Mutex::new(Core::default());
+    let (mut transport, state) = mock_transport(response(0, 0xb2, &[0, 0xe8, 3, 0xc8, 0]), 1);
+    assert_eq!(
+        transaction(&mut transport, &mut Decoder::default(), &core, &req)
+            .unwrap_err()
+            .code,
+        "unsupported_product"
+    );
+    assert!(state.lock().unwrap().writes.is_empty());
+    core.lock().unwrap().configuration = Some(DeviceConfiguration {
+        product_mode: Some(1),
+        ramp_ms: Some(500),
+        startup_delay_ms: Some(500),
+        ..DeviceConfiguration::default()
+    });
+    transaction(&mut transport, &mut Decoder::default(), &core, &req).unwrap();
+    assert_eq!(
+        core.lock().unwrap().configuration.as_ref().unwrap().ramp_ms,
+        Some(1000)
+    );
+    let (mut transport, _) = mock_transport(response(0, 0xb2, &[0xfe, 0xe8, 3, 0xc8, 0]), 1);
+    assert_eq!(
+        transaction(
+            &mut transport,
+            &mut Decoder::default(),
+            &core,
+            &request(0x32, vec![0xd0, 7, 0xf4, 1])
+        )
+        .unwrap()
+        .status,
+        0xfe
+    );
+    assert_eq!(
+        core.lock().unwrap().configuration.as_ref().unwrap().ramp_ms,
+        Some(1000)
+    );
+    assert!(record_frame(
+        &core,
+        Ok(Frame {
+            address: 0,
+            command: 0xb2,
+            parameters: vec![0, 1, 0, 0, 0]
+        }),
+        Some(&req)
+    )
+    .is_none());
+}
+
+#[test]
+fn malformed_extended_configuration_never_replaces_saved_values() {
+    let parameters = vec![
+        0, 0, 0, 0xc2, 1, 0, 3, 4, 1, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        255, 255, 0, 0, 7, 0xc4, 9, 0xe8, 3, 1, 60,
+    ];
+    let core = Mutex::new(Core::default());
+    assert!(record_frame(
+        &core,
+        Ok(Frame {
+            address: 0,
+            command: 0xb1,
+            parameters: parameters.clone()
+        }),
+        None
+    )
+    .is_some());
+    for (offset, value) in [
+        (2, 1),
+        (8, 2),
+        (9, 2),
+        (27, 0),
+        (28, 0),
+        (30, 255),
+        (31, 2),
+        (32, 101),
+    ] {
+        let mut invalid = parameters.clone();
+        invalid[offset] = value;
+        // Force a below-minimum ramp rather than a different valid millisecond value.
+        if offset == 27 {
+            invalid[28] = 0;
+        }
+        if offset == 28 {
+            invalid[27] = 199;
+        }
+        assert!(
+            record_frame(
+                &core,
+                Ok(Frame {
+                    address: 0,
+                    command: 0xb1,
+                    parameters: invalid
+                }),
+                None
+            )
+            .is_none(),
+            "offset {offset}"
+        );
+        let state = core.lock().unwrap();
+        let saved = state.configuration.as_ref().unwrap();
+        assert_eq!(saved.ramp_ms, Some(2500));
+        assert_eq!(saved.initial_duty_percent, Some(60));
+        assert_eq!(saved.auto_initial_value, vec![1, 0, 0, 0]);
+    }
+    // Reserved auto_value bytes remain opaque in non-voice modes.
+    let mut reserved = parameters;
+    reserved[6] = 2;
+    reserved[8] = 255;
+    reserved[9] = 255;
+    assert!(record_frame(
+        &core,
+        Ok(Frame {
+            address: 0,
+            command: 0xb1,
+            parameters: reserved
+        }),
+        None
+    )
+    .is_some());
+}
+
+#[test]
 fn malformed_configuration_and_gain_success_never_update_saved_values() {
     let core = Mutex::new(Core {
         configuration: Some(DeviceConfiguration::default()),
@@ -445,7 +736,7 @@ fn malformed_configuration_and_gain_success_never_update_saved_values() {
             .as_ref()
             .unwrap()
             .antenna_gain,
-        4
+        7
     );
     let (mut transport, state) = mock_transport(vec![], 512);
     let error = transaction(

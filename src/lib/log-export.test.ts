@@ -33,7 +33,12 @@ const logs: LogEntry[] = [
 describe("plain text log export", () => {
   it("preserves timestamps, directions, command labels and redacted payloads", () => {
     const snapshot = logs.map((log) => ({ ...log }));
-    const result = createLogExport(snapshot, connection, "全部记录", new Date(0));
+    const result = createLogExport(
+      snapshot,
+      connection,
+      "全部记录",
+      new Date(0),
+    );
     expect(result.text).toContain("记录数：2\r\n");
     expect(result.text).toContain(
       "[1970-01-01T00:00:00.000Z] [TX] [INFO] [31 读取全部配置]",

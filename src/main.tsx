@@ -1,3 +1,4 @@
+import { t } from "./lib/i18n";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -17,9 +18,9 @@ class ErrorBoundary extends React.Component<
     if (this.state.error)
       return (
         <main className="fatal-error">
-          <h1>界面暂时无法显示</h1>
-          <p>{this.state.error}</p>
-          <button onClick={() => location.reload()}>重新加载</button>
+          <h1>{t("界面暂时无法显示")}</h1>
+          <p>{t(this.state.error)}</p>
+          <button onClick={() => location.reload()}>{t("重新加载")}</button>
         </main>
       );
     return this.props.children;

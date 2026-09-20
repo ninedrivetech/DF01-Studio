@@ -18,7 +18,7 @@ pub fn encode(frame: &Frame) -> Result<Vec<u8>, String> {
         ));
     }
 
-    // The manual's examples include length, address and command in the length.
+    // LEN counts address, command, parameters and checksum (not the length byte).
     let length = (MIN_LENGTH + frame.parameters.len()) as u8;
     let mut checksum = length ^ frame.address ^ frame.command;
     for &parameter in &frame.parameters {
@@ -68,12 +68,31 @@ impl Decoder {
         while consumed < self.buffer.len() {
             let Some(header_offset) = self.buffer[consumed..]
                 .iter()
-                .position(|&byte| byte == HEADER)
+                .position(|&byte| byte == HEADER || byte == 0xfd)
             else {
                 consumed = self.buffer.len();
                 break;
             };
             consumed += header_offset;
+            // U13T output shares the UART. Skip the complete binary text frame,
+            // including any 7F bytes in its payload, before parsing module replies.
+            if self.buffer[consumed] == 0xfd {
+                if self.buffer.len() - consumed < 3 {
+                    break;
+                }
+                let length =
+                    u16::from_be_bytes([self.buffer[consumed + 1], self.buffer[consumed + 2]])
+                        as usize;
+                if !(2..=18).contains(&length) {
+                    consumed += 1;
+                    continue;
+                }
+                if self.buffer.len() - consumed < length + 3 {
+                    break;
+                }
+                consumed += length + 3;
+                continue;
+            }
             match parse_candidate(&self.buffer[consumed..]) {
                 ParseResult::Complete(frame, length) => {
                     results.push(Ok(frame));
@@ -167,6 +186,19 @@ mod tests {
     }
 
     #[test]
+    fn voice_frames_with_embedded_headers_do_not_corrupt_module_replies() {
+        let expected = frame(0xb2, &[0, 0xe8, 3, 0xc8, 0]);
+        let mut wire = hex("FD 00 07 01 01 7F 03 00 10 13");
+        wire.extend(encode(&expected).unwrap());
+        for split in 0..=wire.len() {
+            let mut decoder = Decoder::default();
+            let mut result = decoder.push(&wire[..split]);
+            result.extend(decoder.push(&wire[split..]));
+            assert_eq!(result, vec![Ok(expected.clone())]);
+        }
+    }
+
+    #[test]
     fn manual_examples_match_wire_bytes() {
         let examples = [
             (frame(0x10, &[]), "7F03001013"),
@@ -200,6 +232,18 @@ mod tests {
             (frame(0x30, &[7]), "7F0400300733"),
             (frame(0xb0, &[0, 7]), "7F0500B00007B2"),
             (frame(0x31, &[]), "7F03003132"),
+            (frame(0x33, &[60]), "7F0400333C0B"),
+            (frame(0xb3, &[0, 60]), "7F0500B3003C8A"),
+            (frame(0xb3, &[0xfe, 60]), "7F0500B3FE3C74"),
+            (frame(0x32, &hex("C4 09 E8 03")), "7F070032C409E80313"),
+            (
+                frame(0xb1, &hex("00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 01 3C")),
+                "7F2400B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007C409E803013C4C",
+            ),
+            (
+                frame(0xb1, &hex("00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 E803 C800 00")),
+                "7F2300B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007E803C8000073",
+            ),
             (
                 frame(
                     0xb1,

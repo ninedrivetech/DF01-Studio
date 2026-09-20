@@ -1,62 +1,80 @@
+param([string]$ProjectRoot = (Join-Path $PSScriptRoot '..'))
 $ErrorActionPreference = 'Stop'
-if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Use npm run package:portable on Linux; this PowerShell implementation packages Windows only.' }
-$projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'This script packages Windows only.' }
+Add-Type -AssemblyName System.IO.Compression
+$projectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
 $manifest = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
 $version = $manifest.version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Expected a numeric release version.' }
-$outputDirectory = Join-Path $projectRoot 'release'
-$stagingDirectory = Join-Path $outputDirectory 'portable-docs'
-$docsDirectory = Join-Path $stagingDirectory 'docs'
-$executable = Join-Path $projectRoot 'src-tauri\target\release\df01-studio.exe'
 $tauriDirectory = Join-Path $projectRoot 'src-tauri'
-$tauriConfig = Get-Content -LiteralPath (Join-Path $tauriDirectory 'tauri.conf.json') -Encoding UTF8 -Raw | ConvertFrom-Json
-$installer = Join-Path $projectRoot ("src-tauri\target\release\bundle\nsis\{0}_{1}_x64-setup.exe" -f $tauriConfig.productName, $version)
-foreach ($artifact in @($executable, $installer)) {
-    if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) { throw "Missing build artifact: $artifact" }
+$config = Get-Content -LiteralPath (Join-Path $tauriDirectory 'tauri.conf.json') -Encoding UTF8 -Raw | ConvertFrom-Json
+if ($config.version -ne $version) { throw 'Package and Tauri versions differ.' }
+
+function Assert-Contained([string]$Root, [string]$Target) {
+    $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    $targetPath = [IO.Path]::GetFullPath($Target)
+    if (-not $targetPath.StartsWith($rootPath + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "Path escapes project: $Target" }
+    $cursor = $targetPath
+    while ($cursor -and $cursor -ne $rootPath) {
+        if ((Test-Path -LiteralPath $cursor) -and ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Package path must not be a link: $cursor" }
+        $cursor = [IO.Path]::GetDirectoryName($cursor)
+    }
+    return $targetPath
 }
-$resolvedStaging = [System.IO.Path]::GetFullPath($stagingDirectory)
-$expectedStaging = [System.IO.Path]::GetFullPath((Join-Path $projectRoot 'release\portable-docs'))
-if ($resolvedStaging -ne $expectedStaging -or -not $resolvedStaging.StartsWith($projectRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe staging directory.' }
-if (Test-Path -LiteralPath $resolvedStaging) {
-    if ((Get-Item -LiteralPath $resolvedStaging -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) { throw 'Staging directory must not be a link.' }
-    Remove-Item -LiteralPath $resolvedStaging -Recurse -Force
+function Get-StreamHash([IO.Stream]$Stream) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return [BitConverter]::ToString($sha.ComputeHash($Stream)).Replace('-', '') }
+    finally { $sha.Dispose() }
 }
-New-Item -ItemType Directory -Path $docsDirectory -Force | Out-Null
-foreach ($resource in $tauriConfig.bundle.resources.PSObject.Properties) {
-    if (-not $resource.Value.StartsWith('docs/')) { continue }
-    $source = [System.IO.Path]::GetFullPath((Join-Path $tauriDirectory $resource.Name))
-    $destination = [System.IO.Path]::GetFullPath((Join-Path $stagingDirectory $resource.Value))
-    if (-not $source.StartsWith($projectRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Resource source escapes the project.' }
-    if (-not $destination.StartsWith($docsDirectory + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Resource destination escapes the package.' }
-    Copy-Item -LiteralPath $source -Destination $destination -Force
+$entries = [ordered]@{ 'df01-studio.exe' = (Join-Path $tauriDirectory 'target\release\df01-studio.exe') }
+foreach ($resource in $config.bundle.resources.PSObject.Properties) {
+    $name = [string]$resource.Value
+    if ($name -match '(^/|\\|:|(^|/)\.\.?(/|$)|/$)' -or [string]::IsNullOrWhiteSpace($name)) { throw "Unsafe archive destination: $name" }
+    if ($entries.Contains($name)) { throw "Duplicate archive destination: $name" }
+    $entries[$name] = Join-Path $tauriDirectory $resource.Name
 }
-$readme = Join-Path $projectRoot 'README.md'
-$notices = Join-Path $projectRoot 'THIRD-PARTY-NOTICES.txt'
-$archive = Join-Path $outputDirectory "DF-01-${version}-portable.zip"
-$pendingArchive = Join-Path $outputDirectory "DF-01-${version}-portable.new.zip"
-Compress-Archive -LiteralPath @($executable, $readme, $notices, $docsDirectory) -DestinationPath $pendingArchive -Force
-$installerCopy = Join-Path $outputDirectory "DF-01-${version}-x64-setup.exe"
-Copy-Item -LiteralPath $installer -Destination $installerCopy -Force
+foreach ($name in @($entries.Keys)) {
+    $source = Assert-Contained $projectRoot $entries[$name]
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing build artifact or resource: $source" }
+    $entries[$name] = $source
+}
+$outputDirectory = Assert-Contained $projectRoot (Join-Path $projectRoot 'release')
+New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+$archive = Assert-Contained $projectRoot (Join-Path $outputDirectory "DF-01-${version}-portable.zip")
+$checksum = Assert-Contained $projectRoot (Join-Path $outputDirectory 'SHA256SUMS.txt')
+$pending = Join-Path $outputDirectory ('.portable-' + [Guid]::NewGuid().ToString('N') + '.zip')
+$stream = [IO.File]::Open($pending, [IO.FileMode]::CreateNew, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+$zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Create, $true)
+$expected = @{}
 try {
-    if (Test-Path -LiteralPath $archive -PathType Leaf) {
-        [System.IO.File]::Replace($pendingArchive, $archive, [System.Management.Automation.Language.NullString]::Value)
-    } else {
-        Move-Item -LiteralPath $pendingArchive -Destination $archive
+    foreach ($name in $entries.Keys) {
+        $input = [IO.File]::OpenRead($entries[$name])
+        $entry = $zip.CreateEntry($name, [IO.Compression.CompressionLevel]::Optimal)
+        $output = $entry.Open()
+        try {
+            $expected[$name] = Get-StreamHash $input
+            $input.Position = 0
+            $input.CopyTo($output)
+        } finally { $output.Dispose(); $input.Dispose() }
     }
-} catch {
-    throw "Cannot replace $archive. Close any application using the archive and retry. The complete new archive remains at $pendingArchive. $($_.Exception.Message)"
-}
-Get-Item -LiteralPath $installerCopy, $archive | Select-Object FullName, Length
-$checksums = foreach ($artifact in @($installerCopy, $archive)) {
-    $stream = [System.IO.File]::OpenRead($artifact)
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        $hash = [System.BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '')
-        '{0}  {1}' -f $hash, [System.IO.Path]::GetFileName($artifact)
-    } finally {
-        $stream.Dispose()
-        $sha256.Dispose()
+} finally { $zip.Dispose(); $stream.Dispose() }
+$stream = [IO.File]::OpenRead($pending)
+$zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Read)
+try {
+    if ($zip.Entries.Count -ne $expected.Count) { throw 'Archive entry count differs.' }
+    foreach ($entry in $zip.Entries) {
+        $input = $entry.Open()
+        try { if ((Get-StreamHash $input) -ne $expected[$entry.FullName]) { throw "Archive verification failed: $($entry.FullName)" } }
+        finally { $input.Dispose() }
     }
-}
-$checksums | Set-Content -LiteralPath (Join-Path $outputDirectory 'SHA256SUMS.txt') -Encoding ASCII
-$checksums
+} finally { $zip.Dispose(); $stream.Dispose() }
+try {
+    if (Test-Path -LiteralPath $archive) {
+        [IO.File]::Replace($pending, $archive, [System.Management.Automation.Language.NullString]::Value)
+    } else { [IO.File]::Move($pending, $archive) }
+} catch { throw "Cannot replace $archive. Verified new archive remains at $pending. $($_.Exception.Message)" }
+$stream = [IO.File]::OpenRead($archive)
+try { $hash = Get-StreamHash $stream } finally { $stream.Dispose() }
+"$hash  $([IO.Path]::GetFileName($archive))" | Set-Content -LiteralPath $checksum -Encoding ASCII
+Get-Item -LiteralPath $archive | Select-Object FullName, Length
+Write-Output "Verified $($expected.Count) entries. SHA256: $hash"

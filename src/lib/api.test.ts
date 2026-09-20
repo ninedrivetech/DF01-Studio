@@ -156,7 +156,7 @@ describe("command validation", () => {
   );
 
   it("rejects undefined automatic modes and damaged confirmation fields", () => {
-    expect(() => validateRequest(automatic(3))).toThrow();
+    expect(() => validateRequest(automatic(4))).toThrow();
     const badCheck = automatic(2);
     badCheck.parameters[1] = 0x0a;
     expect(() => validateRequest(badCheck)).toThrow();
@@ -166,6 +166,44 @@ describe("command validation", () => {
     expect(() =>
       validateRequest(request(0x2b, Array<number>(18).fill(0xff))),
     ).toThrow("确认");
+  });
+
+  it("validates voice encodings, wait flags and startup boundaries", () => {
+    for (const encoding of [0, 1, 3, 4, 5]) {
+      const req = automatic(3);
+      req.parameters[3] = encoding;
+      req.parameters[4] = 1;
+      expect(() => validateRequest(req)).not.toThrow();
+    }
+    const invalidVoice = automatic(3);
+    invalidVoice.parameters[3] = 2;
+    expect(() => validateRequest(invalidVoice)).toThrow();
+    invalidVoice.parameters[3] = 1;
+    invalidVoice.parameters[4] = 2;
+    expect(() => validateRequest(invalidVoice)).toThrow();
+    for (const [ramp, delay, valid] of [
+      [200, 200, true],
+      [10000, 5000, true],
+      [199, 200, false],
+      [10001, 200, false],
+      [1000, 199, false],
+      [1000, 5001, false],
+    ]) {
+      const validate = () =>
+        validateRequest(
+          request(0x32, [
+            Number(ramp) & 255,
+            Number(ramp) >> 8,
+            Number(delay) & 255,
+            Number(delay) >> 8,
+          ]),
+        );
+      if (valid) expect(validate).not.toThrow();
+      else expect(validate).toThrow();
+    }
+    expect(frame(0, 0x32, [0xe8, 3, 0xc8, 0]).hex).toBe(
+      "7F 07 00 32 E8 03 C8 00 16",
+    );
   });
 
   it("excludes baud changes and validates reset/gain extension ranges", () => {
@@ -220,12 +258,11 @@ describe("browser simulator workflows", () => {
       uidDecimal: String(0xabaf45e0),
     });
     await api.setSimulationCard(false);
-    expect(await api.execute(request(0x10))).toMatchObject({
-      status: 255,
-      card: null,
-    });
+    const pending = api.execute(request(0x10));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect((await api.snapshot()).logs.at(-1)?.direction).toBe("tx");
     await api.setSimulationCard(true);
-    expect((await api.execute(request(0x10))).status).toBe(0);
+    expect((await pending).status).toBe(0);
   });
 
   it("writes a normal block, reads it back and keeps snapshots isolated", async () => {
@@ -260,17 +297,12 @@ describe("browser simulator workflows", () => {
 
   it("accepts high page requests but reports S50 memory limits without inventing data", async () => {
     expect(() => validateRequest(request(0x11, [0xff]))).not.toThrow();
-    expect(await api.execute(request(0x11, [0xff]))).toMatchObject({
-      status: 0xfe,
-      card: null,
-      data: [0xfe],
-    });
+    await expect(api.execute(request(0x11, [0xff]))).rejects.toThrow(
+      "等待读卡超时",
+    );
     const snapshot = await api.snapshot();
-    expect(snapshot.stats).toMatchObject({ tx: 3, rx: 3 });
-    expect(snapshot.logs.at(-1)).toMatchObject({
-      level: "warning",
-      command: 0x91,
-    });
+    expect(snapshot.connection.connected).toBe(false);
+    expect(snapshot.logs.some((entry) => entry.command === 0x91)).toBe(false);
   });
 
   it("synchronizes persisted configuration and uses the new ID in its acknowledgement", async () => {
@@ -283,8 +315,9 @@ describe("browser simulator workflows", () => {
     await api.execute(request(0x2f, [0xe8, 3]));
     await api.execute(request(0x30, [7]));
     const result = await api.execute(request(0x31));
-    expect(result.data).toHaveLength(27);
-    expect(result.data.slice(24)).toEqual([0xe8, 3, 7]);
+    expect(result.data).toHaveLength(33);
+    expect(result.data.slice(24, 27)).toEqual([0xe8, 3, 7]);
+    expect(result.data[31]).toBe(0);
     expect((await api.snapshot()).configuration).toMatchObject({
       moduleId: 0x7f,
       resetMs: 1000,
@@ -389,7 +422,7 @@ describe("browser simulator workflows", () => {
     );
   });
 
-  it("connects with one configuration read and firmware factory defaults", async () => {
+  it("connects with one configuration read and supported demo defaults", async () => {
     await api.clearLogs();
     await api.connect({ ...config, address: 0x7f });
     const snapshot = await api.snapshot();
@@ -402,9 +435,10 @@ describe("browser simulator workflows", () => {
       moduleId: 0x7f,
       baudRate: 115200,
       autoMode: 0,
-      autoBlock: 1,
+      autoBlock: 4,
       resetMs: 0,
-      antennaGain: 4,
+      antennaGain: 7,
+      productMode: 0,
     });
     expect(
       snapshot.logs.find((entry) => entry.command === 0xb1)?.hex,
@@ -412,6 +446,36 @@ describe("browser simulator workflows", () => {
     await expect(api.connect({ ...config, baudRate: 9600 })).rejects.toThrow(
       "115200",
     );
+  });
+
+  it("reads the selected Cockroach product and persists voice and startup settings", async () => {
+    await api.connect({ ...config, simulationProductMode: 1 });
+    expect((await api.snapshot()).configuration).toMatchObject({
+      productMode: 1,
+      autoMode: 3,
+    });
+    await api.execute(request(0x2e, [3, 13, 8, 5, 1, 9, 8, 0x23, 0x12, 0x54]));
+    await api.execute(request(0x32, [0xd0, 7, 0xf4, 1]));
+    const readback = await api.execute(request(0x31));
+    expect(readback.data.slice(6, 12)).toEqual([3, 8, 5, 1, 9, 8]);
+    expect(readback.data.slice(27, 32)).toEqual([0xd0, 7, 0xf4, 1, 1]);
+    await api.connect({ ...config, simulationProductMode: 0 });
+    expect((await api.snapshot()).configuration?.productMode).toBe(0);
+    await api.execute(request(0x32, [0xd0, 7, 0xf4, 1]));
+    await api.execute(request(0x2e, [3, 13, 8, 5, 1, 9, 8, 0x23, 0x12, 0x54]));
+    const fruitfly = await api.execute(request(0x31));
+    expect(fruitfly.data.slice(6, 12)).toEqual([3, 8, 5, 1, 9, 8]);
+    expect(fruitfly.data.slice(27, 32)).toEqual([0xd0, 7, 0xf4, 1, 0]);
+    for (const percent of [0, 60, 100]) {
+      expect((await api.execute(request(0x33, [percent]))).data).toEqual([
+        0,
+        percent,
+      ]);
+      expect((await api.execute(request(0x31))).data[32]).toBe(percent);
+    }
+    expect(() => validateRequest(request(0x33, [101]))).toThrow();
+    expect(() => validateRequest(request(0x33, []))).toThrow();
+    expect(frame(0, 0x33, [60]).hex).toBe("7F 04 00 33 3C 0B");
   });
 
   it("releases automatic dedup after reset duration or reapplying the same automatic mode", async () => {

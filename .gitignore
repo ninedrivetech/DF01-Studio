@@ -7,3 +7,4 @@ playwright-report/
 release/
 *.local
 *.tsbuildinfo
+docs/screenshots/*-failure.png

@@ -1,8 +1,14 @@
 # 果蝇1号 · DF-01
 
+作者：**Mzee** · **上海玖驱科技有限公司**
+
+联系邮箱：**xiemaths@outlook.com**
+
 果蝇1号是一款串口读卡模块工作台，代号 DF-01，取自果蝇属名 Drosophila。使用 Rust + Tauri 2 构建，前端采用 React、TypeScript、Tailwind CSS 4、daisyUI 5 和 Lucide 图标。界面与主要操作均为中文，应用运行不依赖外部字体、CDN 或在线服务。界面使用模块品牌和通用卡片分类，不展示芯片型号。
 
 使用步骤见 [DF-01 使用指南](docs/USER_GUIDE.md)。协议以 `docs/指令和参数表.md` 为当前固件依据，实现细节见 [协议说明](docs/PROTOCOL.md)。身份证、制卡、清卡、充值、扣款相关命令与响应内容不在本项目范围内。
+
+1.1.1 补齐“偷油婆一号模拟器”与原生自动化测试。选择模拟设备后，可在“模拟产品”中选择果蝇或偷油婆；连接并回读产品模式 `01` 后自动显示扩展页，集中设置 TTS 播报与缓启动时序。果蝇模式 `00` 保持读卡工作台，不显示或进入语音与时序扩展页。底层遵循最新指令表，两种产品均支持语音命令及时序保存、回读；果蝇不执行启动延时和缓升输出。模拟器验证配置读写，真实设备产品模式仍由固件决定。更新内容见 [1.1.1 发布说明](docs/RELEASE-1.1.1.md)。
 
 ## 运行
 
@@ -21,13 +27,14 @@ npm run dev
 
 浏览器地址为 http://127.0.0.1:1420/。浏览器不直接访问真实串口；连接实体设备请启动 Tauri 桌面程序。开发端口已被本项目预览占用时，先结束该预览，再运行 `npm run desktop`，避免两个 Vite 服务争用端口。
 
-生成 Windows 安装包：
+生成 Windows 便携版：
 
 ```powershell
-npm run bundle
+npm run build:portable
+npm run package:portable
 ```
 
-NSIS 安装包输出到 `src-tauri/target/release/bundle/nsis/`；独立程序位于 `src-tauri/target/release/df01-studio.exe`。目标电脑需要 WebView2 Runtime。首次打包可能需要下载 Tauri 的 NSIS 工具。
+便携包输出到 `release/DF-01-1.1.1-portable.zip`；独立程序位于 `src-tauri/target/release/df01-studio.exe`。解压后直接运行，目标电脑需要 WebView2 Runtime。此流程不构建或依赖 NSIS 安装包，打包时逐项校验归档文件并生成 SHA256 校验值。
 
 ### Linux 开发与打包
 
@@ -58,11 +65,11 @@ npm run package:portable
 
 Tauri 自动合并 `src-tauri/tauri.linux.conf.json`，生成 `deb` 与 `appimage`，不会调用 NSIS。便携打包脚本使用系统 `tar`，读取默认的 `src-tauri/target/release/bundle/`，支持本机 x64 / arm64 构建；不支持自定义 Cargo target 目录或交叉编译输出。发布文件以 x64 为例：
 
-- `release/DF-01-1.0.0-linux-x64.deb`
-- `release/DF-01-1.0.0-linux-x64-portable.tar.gz`（AppImage 与资源表中的文档，保留执行权限）
+- `release/DF-01-1.1.1-linux-x64.deb`
+- `release/DF-01-1.1.1-linux-x64-portable.tar.gz`（AppImage 与资源表中的文档，保留执行权限）
 - `release/SHA256SUMS-linux-x64.txt`（独立校验文件，保留已有 Windows 校验文件）
 
-解压便携包后运行 `./df01-studio.AppImage`。运行 AppImage 通常需要 FUSE 2：Ubuntu 22.04 安装 `libfuse2`，24.04 安装 `libfuse2t64`；没有 FUSE 时可尝试 `./df01-studio.AppImage --appimage-extract-and-run`。`.deb` 可使用 `sudo apt install ./release/DF-01-1.0.0-linux-x64.deb` 安装。
+解压便携包后运行 `./df01-studio.AppImage`。运行 AppImage 通常需要 FUSE 2：Ubuntu 22.04 安装 `libfuse2`，24.04 安装 `libfuse2t64`；没有 FUSE 时可尝试 `./df01-studio.AppImage --appimage-extract-and-run`。`.deb` 可使用 `sudo apt install ./release/DF-01-1.1.1-linux-x64.deb` 安装。
 
 许可生成默认读取本机 `rustc -vV` 的目标，也支持 `CARGO_BUILD_TARGET` 或 `npm run notices -- --target aarch64-unknown-linux-gnu`；依赖源码须已通过 `cargo fetch` 下载。`--output /path/to/notices.txt` 可用于单独验证。正式发布前在对应平台重新生成许可文件，再构建打包。
 
@@ -102,6 +109,7 @@ Tauri 自动合并 `src-tauri/tauri.linux.conf.json`，生成 `deb` 与 `appimag
 - 声音提示：收到新的成功自动读卡号 / 数据块上报时播放短提示音，同批上报合并提示，重复刷新不重播。顶部扬声器按钮控制全局静音，同时管理上报提示音和彩蛋音效；静音立即停止声音，状态保存在本机，取消静音不会补播历史上报。
 - 最高增益彩蛋：在工作台或设备配置页手动将滑条调到 7 档（48 dB），出现白眼果蝇和“白眼果蝇抖擞精神！”，整个桌面窗口短暂抖动后回到原位，伴随轻量振翅声与上扬提示音。最大化、全屏或浏览器预览时抖动整个应用界面；“减少动态效果”下保留提示和音效，关闭抖动。提示 4 秒后自动消失，也可关闭，不抢焦点；彩蛋不会自动保存参数，设备读回最高档不会触发。
 - 原生窗口：隐藏系统标题栏，顶部状态栏与日间 / 夜间主题按钮同栏提供拖动、最小化、最大化 / 还原和关闭按钮，不另设底部栏；普通浏览器不显示窗口控件，界面不显示“桌面版 / 手机版”字样。
+- 界面语言：顶部状态栏的 `EN / 中文` 按钮可即时切换中英文，默认中文并在本机记住选择。切换保留连接状态、当前页面和输入草稿；设备名称、卡片数据及原始通信日志不随语言变化。
 
 导入块文件只把选定块载入编辑器，必须另外确认写入。块 0 始终只读；每个扇区末块包含密钥与访问条件，写入会额外提示风险。整卡读取只读取，不执行批量写入。数据导出排除扇区控制块，通信日志与命令预览隐藏密钥及控制块内容。
 
@@ -126,7 +134,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
 E2E 默认使用已安装的 Microsoft Edge；没有 Edge 时安装 Playwright Chromium 后运行。测试生成的页面截图与跟踪保存在 `test-results/`。协议向量、实现范围与实机验收清单分别见 [docs/PROTOCOL.md](docs/PROTOCOL.md) 和 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。真实设备联调的完成情况以验收记录为准。
 
-Linux 首次运行浏览器测试前执行 `npx playwright install --with-deps chromium`。`npm run test:scripts` 验证归档内容、重复打包、路径边界和许可目标选择。`scripts/native-smoke.ps1` / `native-smoke.mjs` 使用 WebView2/CDP，仅用于 Windows；浏览器测试不代表 Linux 原生 WebKitGTK 验证。
+Linux 首次运行浏览器测试前执行 `npx playwright install --with-deps chromium`。`npm run test:scripts` 在 Windows 验证便携打包、重复替换、校验值、版本一致性及路径边界；其他平台跳过 Windows 用例。`scripts/native-smoke.ps1` / `native-smoke.mjs` 使用 WebView2/CDP，仅用于 Windows；浏览器测试不代表 Linux 原生 WebKitGTK 验证。
 
 ## 目录
 
@@ -137,12 +145,12 @@ src-tauri/icons/         桌面应用图标
 tests/                  Playwright 工作流与响应式截图测试
 docs/                   使用指南、指令表、协议说明、验收清单和验证证据
 scripts/                打包、许可声明生成和原生窗口验证脚本
-release/                当前安装包和便携 ZIP
+release/                当前便携 ZIP 与校验值
 ```
 
 开源依赖与主题来源见 [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md)。
 
-安装包为 `release/DF-01-1.0.0-x64-setup.exe`，便携包为 `release/DF-01-1.0.0-portable.zip`。版本号 `1.0.0`，更新日期 2026-09-10；文件哈希见 `release/SHA256SUMS.txt`，验证结果见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。便携版解压后运行 `df01-studio.exe`，需要 WebView2 Runtime。重新发布时依次执行 `npm run notices`、`npm run bundle`、`npm run package:portable`。
+本次 Windows 交付为 `release/DF-01-1.1.1-portable.zip`，版本号 `1.1.1`；文件哈希见 `release/SHA256SUMS.txt`，验证结果见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。便携版解压后运行 `df01-studio.exe`，需要 WebView2 Runtime。重新发布时依次执行 `npm run notices`、`npm run build:portable`、`npm run package:portable`。
 
 默认窗口为 1280 × 820，最小为 900 × 640。工作台在这两种窗口下无需滚动主页面即可看到全部操作区，包括自动读块的编码选择；通信记录、报文详情和解码结果在各自区域内滚动。小屏及其他页面保留正常滚动。界面默认紧凑密度，顶部栏与侧边导航固定。
 

@@ -52,7 +52,7 @@ test("DF-01 branding and themed first-screen controls survive night mode", async
 }, info) => {
   await page.setViewportSize({ width: 900, height: 640 });
   await page.goto("/");
-  await expect(page).toHaveTitle("果蝇1号 · DF-01 工作台");
+  await expect(page).toHaveTitle("果蝇1号 · DF-01");
   await expect(page.locator(".brand")).toContainText("果蝇1号");
   await page.getByRole("button", { name: "连接设备", exact: true }).click();
   await expect(
@@ -62,6 +62,7 @@ test("DF-01 branding and themed first-screen controls survive night mode", async
     page.getByRole("button", { name: "应用模式", exact: true }),
   ).toBeEnabled();
   await page.getByLabel("工作台自动模式").selectOption("2");
+  await page.getByLabel("工作台目标块").fill("1");
   await page.getByRole("button", { name: "应用模式", exact: true }).click();
   await expect(page.locator(".latest-data")).toContainText("DF-01 FRUITFLY");
   await page

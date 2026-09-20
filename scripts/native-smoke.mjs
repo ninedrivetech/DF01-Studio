@@ -188,14 +188,13 @@ try {
   report.availablePorts = ports.map(item => item.name);
   const serialSelect = page.getByRole('combobox', { name: '串口', exact: true });
   const expectedPorts = [...new Set(report.availablePorts)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  await page.waitForFunction(names => {
-    const select = document.querySelector('select[aria-label="串口"]');
-    return select && names.every(name => [...select.options].some(option => option.value === name));
-  }, expectedPorts);
-  for (const name of expectedPorts) {
-    await serialSelect.selectOption(name);
-    assert.equal(await serialSelect.inputValue(), name, 'Each native serial port must be selectable');
-    assert.deepEqual(await serialSelect.locator('option').evaluateAll(options => options.map(option => option.value).filter(Boolean)), expectedPorts, 'Selecting a port must not filter the complete serial list');
+  for (const [index, name] of expectedPorts.entries()) {
+    await serialSelect.click();
+    const options = page.getByRole('listbox', { name: '可用串口' }).getByRole('option');
+    await expect(options).toHaveCount(expectedPorts.length + 1);
+    await expect(options.nth(index + 1)).toContainText(name);
+    await options.nth(index + 1).click();
+    await expect(serialSelect).toContainText(name);
   }
   report.checks.push('Native serial discovery and complete naturally sorted dropdown verified; every discovered port selected without opening hardware connections');
 
@@ -209,10 +208,10 @@ try {
   assert.equal(synchronized.configuration.moduleId, 0);
   assert.equal(synchronized.configuration.baudRate, 115200);
   assert.equal(synchronized.configuration.resetMs, 0);
-  assert.equal(synchronized.configuration.antennaGain, 4);
+  assert.equal(synchronized.configuration.antennaGain, 7);
   assert.equal(synchronized.logs.filter(log => log.direction === 'tx' && log.command === 0x31).length, 1, 'Connection must synchronize configuration exactly once');
   report.checks.push('Connection synchronizes 31/B1 configuration at fixed 115200 baud');
-  await expect(page).toHaveTitle('果蝇1号 · DF-01 工作台');
+  await expect(page).toHaveTitle('果蝇1号 · DF-01');
   await expect(page.getByRole('button', { name: '断开连接', exact: true })).toBeVisible();
   // Finish the default connection-time report before measuring a new mode's cue.
   await page.getByLabel('工作台自动模式').selectOption('1');
@@ -245,6 +244,8 @@ try {
   await expect.poll(() => page.evaluate(() => window.nativeAudioVoices)).toBe(2);
   report.checks.push('Native automatic block reports play a short audio cue; global mute suppresses new report sounds and unmuting does not replay history');
   const gain = page.getByRole('slider', { name: '工作台天线增益', exact: true });
+  await gain.focus();
+  await gain.press('Home');
   const gainOrigin = await invoke('plugin:window|outer_position', { label: 'main' });
   await page.evaluate(() => {
     window.gainPreviousMotion = document.documentElement.dataset.motion;
@@ -263,7 +264,7 @@ try {
   await gain.press('End');
   await expect(page.locator('.gain-easter-egg')).toHaveText('白眼果蝇抖擞精神！');
   await expect(gain).toBeFocused();
-  await expect(page.locator('.rf-control')).toContainText('已保存 33 dB');
+  await expect(page.locator('.rf-control')).toContainText('已保存 48 dB');
   const gainPositions = await page.evaluate(() => window.gainPositionSamples);
   assert.ok(gainPositions.some(position => position.x !== gainOrigin.x || position.y !== gainOrigin.y), 'The actual native window must move during the celebration');
   assert.deepEqual(await invoke('plugin:window|outer_position', { label: 'main' }), gainOrigin, 'The native window must return to its original position');
@@ -374,10 +375,10 @@ try {
   report.checks.push('Removed baud-rate command cannot transmit through native IPC');
 
   await invoke('set_simulation_card', { present: false });
-  const absent = await invoke('execute_command', { request: { command: 0x10, parameters: [] } });
-  assert.equal(absent.status, 0xff);
-  assert.equal(absent.card, null);
+  const pendingRead = invoke('execute_command', { request: { command: 0x10, parameters: [] } });
+  await page.waitForTimeout(150);
   await invoke('set_simulation_card', { present: true });
+  assert.equal((await pendingRead).status, 0);
   await execute(0x2f, [0, 0]);
   const rxBeforeMode = (await invoke('get_snapshot')).stats.rx;
   await execute(0x2e, [0, 10, 1, 0, 0, 0, 0, 0x23, 0x12, 0x54]);
@@ -503,6 +504,9 @@ try {
   }
   await expect(page.getByLabel('动态效果', { exact: true })).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.about-band')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.about-band')).toContainText('Mzee');
+  await expect(page.locator('.about-band')).toContainText('xiemaths@outlook.com');
+  await expect(page.locator('.about-band')).toContainText('上海玖驱科技有限公司');
   assert.ok(await page.locator('main').evaluate(element => element.scrollHeight <= element.clientHeight + 1), 'Complete native appearance page must fit the first screen');
   assert.ok(await page.locator('.about-band').evaluate(element => innerHeight - element.getBoundingClientRect().bottom <= 16), 'Native appearance content must fill the first screen down to the bottom gutter');
   await page.screenshot({ path: path.join(output, `${artifactName}-appearance.png`), fullPage: false });
@@ -516,6 +520,59 @@ try {
   ownsSimulation = false;
   assert.equal((await invoke('get_snapshot')).connection.connected, false);
   report.checks.push('Native screenshot captured and simulator disconnected');
+  await expect(page.getByRole('button', {name: '连接设备', exact: true})).toBeVisible();
+  await page.getByLabel('模拟产品', {exact: true}).selectOption('1');
+  await expect(navigation.getByRole('button', {name: '偷油婆扩展', exact: true})).toHaveCount(0);
+  await page.getByRole('button', {name: '连接设备', exact: true}).click();
+  ownsSimulation = true;
+  const cockroachSnapshot = await waitSnapshot(snapshot => snapshot.connection.connected && snapshot.configuration?.productMode === 1, 'Cockroach B1 readback');
+  assert.equal(cockroachSnapshot.configuration.autoMode, 3);
+  await expect(page.getByRole('heading', {name: '偷油婆扩展', exact: true})).toBeVisible();
+  await expect(page.locator('.brand-copy strong')).toHaveText('偷油婆一号');
+  await page.getByLabel('语音读取块 / 页', {exact: true}).fill('8');
+  await page.getByLabel('文本编码', {exact: true}).selectOption('5');
+  await page.getByLabel('等待本条播报完成再发送下一条', {exact: false}).check();
+  await page.getByRole('button', {name: '保存并开启语音', exact: true}).click();
+  await waitSnapshot(snapshot => snapshot.configuration?.autoBlock === 8 && snapshot.configuration.autoInitialValue[0] === 5 && snapshot.configuration.autoInitialValue[1] === 1, 'native TTS acknowledgement');
+  await execute(0x31);
+  assert.deepEqual((await invoke('get_snapshot')).configuration.autoInitialValue, [5, 1, 0, 0]);
+  await page.getByLabel('电机缓启动时间 (ms)', {exact: true}).fill('2000');
+  await page.getByLabel('系统启动延时 (ms)', {exact: true}).fill('500');
+  await page.getByRole('button', {name: '保存启动时序', exact: true}).click();
+  await waitSnapshot(snapshot => snapshot.configuration?.rampMs === 2000 && snapshot.configuration.startupDelayMs === 500, 'native startup acknowledgement');
+  await execute(0x31);
+  const nativeCockroach = (await invoke('get_snapshot')).configuration;
+  assert.equal(nativeCockroach.rampMs, 2000);
+  assert.equal(nativeCockroach.startupDelayMs, 500);
+  assert.equal(nativeCockroach.initialDutyPercent, 60);
+  await page.getByLabel('初始占空比 (%)', {exact: true}).fill('65');
+  await page.getByRole('button', {name: '保存初始占空比', exact: true}).click();
+  await waitSnapshot(snapshot => snapshot.configuration?.initialDutyPercent === 65, 'native initial duty acknowledgement');
+  await execute(0x31);
+  assert.equal((await invoke('get_snapshot')).configuration.initialDutyPercent, 65);
+  await page.getByRole('button', {name: '关闭语音自动读取', exact: true}).click();
+  await waitSnapshot(snapshot => snapshot.configuration?.autoMode === 1, 'disable native voice mode');
+  const beforeDirection = await invoke('get_snapshot');
+  await page.getByRole('radio', {name: '正转', exact: true}).check();
+  await page.getByRole('radio', {name: '反转', exact: true}).check();
+  await expect(page.getByRole('radio', {name: '反转', exact: true})).toBeChecked();
+  const afterDirection = await invoke('get_snapshot');
+  assert.equal(afterDirection.stats.tx, beforeDirection.stats.tx);
+  assert.deepEqual(afterDirection.configuration, beforeDirection.configuration);
+  report.checks.push('Author credit is visible; initial duty saves and reads through 33/B3 and 31/B1; motor direction selection sends no command and changes no saved configuration');
+  await page.screenshot({path: path.join(output, `${artifactName}-cockroach.png`), fullPage: true});
+  report.checks.push('Cockroach simulator selected through UI: real Rust 31/B1 readback reveals the product page; TTS 2E/AE and startup 32/B2 save and re-query correctly; voice mode can be disabled');
+  await page.getByRole('button', {name: '断开连接', exact: true}).click();
+  await expect(navigation.getByRole('button', {name: '偷油婆扩展', exact: true})).toHaveCount(0);
+  await page.getByLabel('模拟产品', {exact: true}).selectOption('0');
+  await page.getByRole('button', {name: '连接设备', exact: true}).click();
+  await waitSnapshot(snapshot => snapshot.connection.connected && snapshot.configuration?.productMode === 0, 'return to Fruit Fly B1');
+  await expect(page.locator('.brand-copy strong')).toHaveText('果蝇1号');
+  await expect(navigation.getByRole('button', {name: '偷油婆扩展', exact: true})).toHaveCount(0);
+  await invoke('disconnect_device');
+  ownsSimulation = false;
+  assert.deepEqual(errors, [], 'Product switching produced no uncaught JavaScript errors');
+  report.checks.push('Native Cockroach disconnect hides extensions; reconnecting the Fruit Fly simulator restores the Fruit Fly workstation');
   const closed = page.waitForEvent('close', { timeout: 10000 });
   await Promise.all([
     closed,

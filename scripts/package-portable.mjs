@@ -86,11 +86,11 @@ export async function packageLinux(root, arch = process.arch) {
 
 export async function main() {
   if (process.argv.length > 2) throw new Error('package:portable accepts no arguments; use a native default-target release build.');
+  if (process.env.CARGO_TARGET_DIR || process.env.CARGO_BUILD_TARGET) throw new Error('package:portable expects src-tauri/target/release. Unset custom Cargo target settings and build natively.');
   if (process.platform === 'win32') {
     const powershell = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     run(powershell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(projectRoot, 'scripts', 'package-portable.ps1')], { cwd: projectRoot });
   } else if (process.platform === 'linux') {
-    if (process.env.CARGO_TARGET_DIR || process.env.CARGO_BUILD_TARGET) throw new Error('package:portable expects src-tauri/target/release. Unset custom Cargo target settings and build natively.');
     console.log(JSON.stringify(await packageLinux(projectRoot), null, 2));
   } else {
     throw new Error(`Portable packaging supports Windows and Linux; current platform: ${process.platform}`);

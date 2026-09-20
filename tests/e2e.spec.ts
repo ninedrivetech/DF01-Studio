@@ -125,7 +125,7 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 
-test("simulation reads UID, handles an absent card and recovers without reconnecting", async ({
+test("simulation isolates a timed-out manual read and recovers after reconnecting", async ({
   page,
 }) => {
   await expect(
@@ -141,11 +141,12 @@ test("simulation reads UID, handles an absent card and recovers without reconnec
   ).toBeEnabled();
   await page.getByRole("button", { name: "读取卡号", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
-    /无卡|未检测到卡片|放入感应区/,
+    /等待读卡超时/,
   );
   await expect(
-    page.getByRole("button", { name: "断开连接", exact: true }),
+    page.getByRole("button", { name: "连接设备", exact: true }),
   ).toBeEnabled();
+  await connectSimulation(page);
   await page.getByRole("switch", { name: "模拟卡片在场", exact: true }).check();
   await readUid(page);
   await page.getByRole("button", { name: "断开连接", exact: true }).click();
@@ -235,13 +236,13 @@ test("page input supports the full protocol range and reports the S50 simulator 
   await page
     .getByRole("button", { name: "分页卡 / 连续读取", exact: true })
     .click();
-  await page.getByLabel("起始页", { exact: true }).fill("255");
-  await page.getByRole("button", { name: "读取连续页", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("分块卡");
-  await expect(page.getByText("尚未读取连续页", { exact: true })).toBeVisible();
   await page.getByLabel("起始页", { exact: true }).fill("256");
   await page.getByRole("button", { name: "读取连续页", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("255");
+  await page.getByLabel("起始页", { exact: true }).fill("255");
+  await page.getByRole("button", { name: "读取连续页", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("等待读卡超时");
+  await expect(page.getByText("尚未读取连续页", { exact: true })).toBeVisible();
   await navigate(page, "通信日志");
   await expect(page.locator(".log-table")).toContainText("7F 04 00 11 FF EA");
 });

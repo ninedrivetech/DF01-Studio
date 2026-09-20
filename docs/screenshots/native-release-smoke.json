@@ -1,8 +1,8 @@
 {
   "runtime": "tauri-native-webview2",
   "configuration": "release",
-  "timestamp": "2026-09-09T17:22:45.592Z",
-  "processId": "41676",
+  "timestamp": "2026-09-20T22:24:37.187Z",
+  "processId": "70252",
   "checks": [
     "Real Tauri IPC detected; application starts disconnected",
     "Undecorated native window has controls beside the theme button in one topbar row, no bottom statusbar, and working maximize, restore and minimize buttons",
@@ -29,6 +29,9 @@
     "Key management, device settings and communication logs use consistent panels; controls fit the native first screen and long logs scroll internally with a visible header",
     "Complete memory map, sector operations, four themes, density, motion and about information fit in the native first screen",
     "Native screenshot captured and simulator disconnected",
+    "Author credit is visible; initial duty saves and reads through 33/B3 and 31/B1; motor direction selection sends no command and changes no saved configuration",
+    "Cockroach simulator selected through UI: real Rust 31/B1 readback reveals the product page; TTS 2E/AE and startup 32/B2 save and re-query correctly; voice mode can be disabled",
+    "Native Cockroach disconnect hides extensions; reconnecting the Fruit Fly simulator restores the Fruit Fly workstation",
     "Topbar close button closed the actual native WebView"
   ],
   "url": "http://tauri.localhost/",
@@ -90,7 +93,7 @@
     }
   },
   "downloadFile": "docs\\screenshots\\testnative-release.log",
-  "exportedLogCount": 79,
+  "exportedLogCount": 78,
   "memoryScreenshot": "docs\\screenshots\\native-release-memory.png",
   "passed": true
 }

@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useId, useState } from "react";
 import type { InputHTMLAttributes } from "react";
 
@@ -24,6 +25,7 @@ export function NumberInput({
   errorMessage,
   ...props
 }: Props) {
+  useLanguage();
   const [draft, setDraft] = useState(
     Number.isFinite(value) ? String(value) : "",
   );
@@ -56,7 +58,9 @@ export function NumberInput({
         value={draft}
         aria-invalid={touched && !valid}
         aria-describedby={
-          touched && !valid ? errorId : props["aria-describedby"]
+          [props["aria-describedby"], touched && !valid ? errorId : null]
+            .filter(Boolean)
+            .join(" ") || undefined
         }
         onChange={(event) => {
           const next = event.target.value;
@@ -72,7 +76,7 @@ export function NumberInput({
       />
       {touched && !valid && (
         <small id={errorId} className="number-error" aria-live="polite">
-          {errorMessage ?? `请输入 ${min}–${max} 的整数`}
+          {t(errorMessage ?? `请输入 ${min}–${max} 的整数`)}
         </small>
       )}
     </span>

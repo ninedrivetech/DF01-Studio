@@ -1,9 +1,11 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./ui";
 import { startGainEffects } from "../lib/gain-effects";
 
 export function GainEasterEgg() {
+  useLanguage();
   const [visible, setVisible] = useState(true);
   useEffect(() => {
     if (!visible) return;
@@ -20,7 +22,7 @@ export function GainEasterEgg() {
       <svg
         viewBox="0 0 100 100"
         role="img"
-        aria-label="白眼果蝇"
+        aria-label={t("白眼果蝇")}
         width="48"
         height="48"
       >
@@ -86,8 +88,8 @@ export function GainEasterEgg() {
           strokeWidth="2"
         />
       </svg>
-      <p>白眼果蝇抖擞精神！</p>
-      <IconButton label="关闭彩蛋" onClick={() => setVisible(false)}>
+      <p>{t("白眼果蝇抖擞精神！")}</p>
+      <IconButton label={t("关闭彩蛋")} onClick={() => setVisible(false)}>
         <X size={16} />
       </IconButton>
     </div>

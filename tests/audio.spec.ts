@@ -31,7 +31,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto("/");
   await page.getByRole("button", { name: "连接设备", exact: true }).click();
-  await expect(page.locator(".rf-control")).toContainText("已保存 33 dB");
+  await expect(page.locator(".rf-control")).toContainText("已保存 48 dB");
 });
 
 test("automatic UID and block reports sound once, manual reads and repeat polling stay quiet", async ({
@@ -67,6 +67,7 @@ test("global mute stops active audio, silences reports and easter eggs, and surv
     exact: true,
   });
   await gain.focus();
+  await gain.press("Home");
   await gain.press("End");
   await expect.poll(() => voices(page)).toBeGreaterThanOrEqual(3);
   await page.getByRole("button", { name: "全局静音", exact: true }).click();
@@ -85,6 +86,7 @@ test("global mute stops active audio, silences reports and easter eggs, and surv
   await gain.press("End");
   await expect(page.locator(".gain-easter-egg")).toBeVisible();
   await page.getByLabel("工作台自动模式").selectOption("2");
+  await page.getByLabel("工作台目标块").fill("1");
   await page.getByRole("button", { name: "应用模式", exact: true }).click();
   await expect(page.locator(".latest-data")).toContainText("DF-01 FRUITFLY");
   expect(await voices(page)).toBe(mutedVoices);

@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -25,8 +26,9 @@ function ByteGrid({
   data: number[];
   payloadLength?: number;
 }) {
+  useLanguage();
   return (
-    <div className="byte-grid" aria-label="原始字节">
+    <div className="byte-grid" aria-label={t("原始字节")}>
       {data.map((byte, index) => (
         <span
           className={
@@ -49,6 +51,7 @@ export function ByteInspector({
   data: number[];
   compact?: boolean;
 }) {
+  useLanguage();
   const [selected, setSelected] = useState<ByteEncoding[]>([
     "hex",
     "gbk",
@@ -96,7 +99,11 @@ export function ByteInspector({
     >
       <div className="byte-toolbar">
         <strong>
-          数据解码 <span>{data.length} 字节</span>
+          {t("数据解码 ")}
+          <span>
+            {data.length}
+            {t(" 字节")}
+          </span>
         </strong>
         <label className="byte-toggle">
           <input
@@ -104,11 +111,11 @@ export function ByteInspector({
             checked={hideNul}
             onChange={(event) => setHideNul(event.target.checked)}
           />
-          隐藏尾部 NUL
+          {t("隐藏尾部 NUL")}
         </label>
       </div>
       {!compact && data.length > 0 && <ByteGrid data={data} />}
-      <fieldset className="byte-formats" aria-label="查看编码">
+      <fieldset className="byte-formats" aria-label={t("查看编码")}>
         {BYTE_ENCODINGS.map(({ value, label }) => (
           <label key={value}>
             <input
@@ -126,7 +133,7 @@ export function ByteInspector({
                 )
               }
             />
-            {label}
+            {t(label)}
           </label>
         ))}
       </fieldset>
@@ -137,21 +144,31 @@ export function ByteInspector({
             key={encoding}
           >
             <span className="byte-reading-label">
-              {BYTE_ENCODINGS.find((entry) => entry.value === encoding)!.label}
+              {t(
+                BYTE_ENCODINGS.find((entry) => entry.value === encoding)!.label,
+              )}
             </span>
             <div className="byte-reading-value">
               {error ? (
                 <span className="byte-decode-error">
                   <AlertCircle size={14} />
-                  {error}
+                  {t(error)}
                 </span>
               ) : (
-                <code>{display || "（空）"}</code>
+                <code>{display || t("（空）")}</code>
               )}
-              {hidden > 0 && <small>尾部 {hidden} 个 NUL 已隐藏</small>}
+              {hidden > 0 && (
+                <small>
+                  {t("尾部 ")}
+                  {hidden}
+                  {t(" 个 NUL 已隐藏")}
+                </small>
+              )}
             </div>
             <IconButton
-              label={`复制 ${BYTE_ENCODINGS.find((entry) => entry.value === encoding)!.label} 结果`}
+              label={t(
+                `复制 ${BYTE_ENCODINGS.find((entry) => entry.value === encoding)!.label} 结果`,
+              )}
               disabled={Boolean(error) || data.length === 0}
               onClick={() => {
                 setCopyError("");
@@ -165,10 +182,12 @@ export function ByteInspector({
             </IconButton>
           </div>
         ))}
-        {selected.length === 0 && <p className="byte-empty">未选择编码</p>}
+        {selected.length === 0 && (
+          <p className="byte-empty">{t("未选择编码")}</p>
+        )}
       </div>
       <span className="byte-copy-status" aria-live="polite">
-        {copyError || (copied ? "已复制" : "")}
+        {t(copyError) || (copied ? t("已复制") : "")}
       </span>
     </div>
   );
@@ -189,6 +208,7 @@ export function ByteComposer({
   disabled = false,
   applyLabel = "应用到写入区",
 }: ByteComposerProps) {
+  useLanguage();
   const inputId = useId();
   const [encoding, setEncoding] = useState<ByteEncoding>("hex");
   const [input, setInput] = useState(() =>
@@ -220,9 +240,9 @@ export function ByteComposer({
     <div className="byte-composer">
       <div className="byte-toolbar">
         <label className="byte-encoding-select">
-          <span>输入编码</span>
+          <span>{t("输入编码")}</span>
           <select
-            aria-label="写入内容编码"
+            aria-label={t("写入内容编码")}
             value={encoding}
             disabled={disabled}
             onChange={(event) => {
@@ -251,13 +271,13 @@ export function ByteComposer({
           >
             {BYTE_ENCODINGS.map(({ value, label }) => (
               <option key={value} value={value}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
         </label>
         <IconButton
-          label="清空转换内容"
+          label={t("清空转换内容")}
           disabled={disabled || input.length === 0}
           onClick={() => {
             setInput("");
@@ -270,7 +290,7 @@ export function ByteComposer({
         </IconButton>
       </div>
       <label htmlFor={inputId} className="byte-input-label">
-        转换内容
+        {t("转换内容")}
       </label>
       <textarea
         id={inputId}
@@ -296,28 +316,31 @@ export function ByteComposer({
         {error ? (
           <>
             <AlertCircle size={15} />
-            {error}
+            {t(error)}
           </>
         ) : (
           <>
-            <span>{preview.value!.payloadLength} / 16 字节</span>
+            <span>
+              {preview.value!.payloadLength}
+              {t(" / 16 字节")}
+            </span>
             <span>
               {preview.value!.paddingLength > 0
-                ? `补零 ${preview.value!.paddingLength} 字节`
-                : "完整数据块"}
+                ? t(`补零 ${preview.value!.paddingLength} 字节`)
+                : t("完整数据块")}
             </span>
           </>
         )}
       </div>
       <div className="byte-write-preview">
-        <span className="byte-input-label">写入字节预览</span>
+        <span className="byte-input-label">{t("写入字节预览")}</span>
         {preview.value ? (
           <ByteGrid
             data={preview.value.bytes}
             payloadLength={preview.value.payloadLength}
           />
         ) : (
-          <p className="byte-empty">数据格式无效</p>
+          <p className="byte-empty">{t("数据格式无效")}</p>
         )}
       </div>
       <div className="byte-composer-actions">
@@ -325,7 +348,7 @@ export function ByteComposer({
           {applied && (
             <>
               <Check size={14} />
-              已应用
+              {t("已应用")}
             </>
           )}
         </span>
@@ -344,7 +367,7 @@ export function ByteComposer({
           }}
         >
           <ArrowDownToLine size={16} />
-          {applyLabel}
+          {t(applyLabel)}
         </Button>
       </div>
     </div>

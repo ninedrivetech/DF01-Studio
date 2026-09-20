@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, Layers3, LockKeyhole } from "lucide-react";
 import "./memory-map.css";
@@ -15,6 +16,7 @@ export function MemoryMap({
   disabled,
   onSelect,
 }: MemoryMapProps) {
+  useLanguage();
   const panelId = useId();
   const [expanded, setExpanded] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -45,30 +47,37 @@ export function MemoryMap({
   return (
     <section
       className={`memory-map ${expanded ? "is-expanded" : ""}`}
-      aria-label="存储映射"
+      aria-label={t("存储映射")}
     >
       <div className="memory-map-heading">
-        <h2>存储映射</h2>
-        <span>{read.size} / 64 已读</span>
+        <h2>{t("存储映射")}</h2>
+        <span>
+          {read.size}
+          {t(" / 64 已读")}
+        </span>
       </div>
       <button
         ref={toggleRef}
         type="button"
         className="memory-map-toggle"
-        aria-label={expanded ? "收起存储映射" : "展开存储映射"}
+        aria-label={t(expanded ? "收起存储映射" : "展开存储映射")}
         aria-expanded={expanded}
         aria-controls={panelId}
         onClick={() => setExpanded((value) => !value)}
       >
         <Layers3 size={18} aria-hidden="true" />
         <span className="memory-map-summary">
-          <strong>存储映射</strong>
+          <strong>{t("存储映射")}</strong>
           <span>
-            扇区 {String(sector).padStart(2, "0")} · 块{" "}
-            {String(block).padStart(2, "0")}
+            {t("扇区 ")}
+            {String(sector).padStart(2, "0")}
+            {t(" · 块")} {String(block).padStart(2, "0")}
           </span>
         </span>
-        <span className="memory-map-progress">{read.size} / 64 已读</span>
+        <span className="memory-map-progress">
+          {read.size}
+          {t(" / 64 已读")}
+        </span>
         <ChevronDown
           size={17}
           className="memory-map-chevron"
@@ -79,10 +88,10 @@ export function MemoryMap({
         id={panelId}
         className="memory-map-panel"
         role="group"
-        aria-label="数据块选择"
+        aria-label={t("数据块选择")}
       >
         <div className="block-map-head" aria-hidden="true">
-          <span>扇区</span>
+          <span>{t("扇区")}</span>
           {[0, 1, 2, 3].map((offset) => (
             <span key={offset}>{offset}</span>
           ))}
@@ -106,8 +115,8 @@ export function MemoryMap({
                   <button
                     type="button"
                     key={value}
-                    title={`块 ${value} · ${description}${read.has(value) ? " · 已读取" : ""}`}
-                    aria-label={`选择块 ${value}`}
+                    title={`${t(`块 ${value}`)} · ${t(description)}${read.has(value) ? ` ${t("· 已读取")}` : ""}`}
+                    aria-label={t(`选择块 ${value}`)}
                     aria-pressed={block === value}
                     disabled={disabled}
                     onClick={() => {
@@ -132,11 +141,11 @@ export function MemoryMap({
         <div className="memory-map-legend">
           <span>
             <i className="memory-map-read-dot" aria-hidden="true" />
-            已读取
+            {t("已读取")}
           </span>
           <span>
             <LockKeyhole size={12} aria-hidden="true" />
-            受保护块
+            {t("受保护块")}
           </span>
         </div>
       </div>

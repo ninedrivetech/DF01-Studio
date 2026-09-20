@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useRef } from "react";
 import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
 import { AlertTriangle, LoaderCircle, X } from "lucide-react";
@@ -11,6 +12,7 @@ export function Button({
   busy?: boolean;
   variant?: "primary" | "secondary" | "danger" | "ghost";
 }) {
+  useLanguage();
   const themeClass = {
     primary: "btn-primary",
     secondary: "btn-outline",
@@ -33,12 +35,13 @@ export function IconButton({
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+  useLanguage();
   return (
     <button
       {...props}
       className={`btn btn-ghost btn-square icon-button ${props.className ?? ""}`}
-      title={label}
-      aria-label={label}
+      title={t(label)}
+      aria-label={t(label)}
     >
       {children}
     </button>
@@ -49,11 +52,12 @@ export function Field({
   children,
   hint,
 }: PropsWithChildren<{ label: string; hint?: string }>) {
+  useLanguage();
   return (
     <label className="field">
-      <span>{label}</span>
+      <span>{t(label)}</span>
       {children}
-      {hint && <small>{hint}</small>}
+      {hint && <small>{t(hint)}</small>}
     </label>
   );
 }
@@ -69,12 +73,13 @@ export function Section({
   meta?: ReactNode;
   className?: string;
 }>) {
+  useLanguage();
   return (
     <section className={`section ${className}`}>
       <div className="section-heading">
         <h2>
           {icon}
-          {title}
+          {t(title)}
         </h2>
         {meta}
       </div>
@@ -91,11 +96,12 @@ export function Empty({
   title: string;
   detail?: string;
 }) {
+  useLanguage();
   return (
     <div className="empty-state">
       {icon}
-      <strong>{title}</strong>
-      {detail && <span>{detail}</span>}
+      <strong>{t(title)}</strong>
+      {detail && <span>{t(detail)}</span>}
     </div>
   );
 }
@@ -108,6 +114,7 @@ export interface Confirmation {
   onCancel: () => void;
 }
 export function ConfirmDialog({ value }: { value: Confirmation | null }) {
+  useLanguage();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (value) ref.current?.showModal();
@@ -127,22 +134,22 @@ export function ConfirmDialog({ value }: { value: Confirmation | null }) {
         <>
           <div className="dialog-heading">
             <AlertTriangle size={24} />
-            <IconButton label="取消" onClick={value.onCancel}>
+            <IconButton label={t("取消")} onClick={value.onCancel}>
               <X size={18} />
             </IconButton>
           </div>
-          <h2 id="confirm-title">{value.title}</h2>
-          <p>{value.description}</p>
-          {value.details && <pre>{value.details}</pre>}
+          <h2 id="confirm-title">{t(value.title)}</h2>
+          <p>{t(value.description)}</p>
+          {value.details && <pre>{t(value.details)}</pre>}
           <div className="dialog-actions">
             <Button onClick={value.onCancel} autoFocus>
-              取消
+              {t("取消")}
             </Button>
             <Button
               variant={value.danger ? "danger" : "primary"}
               onClick={value.onConfirm}
             >
-              确认执行
+              {t("确认执行")}
             </Button>
           </div>
         </>

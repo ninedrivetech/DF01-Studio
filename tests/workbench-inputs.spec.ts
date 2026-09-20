@@ -24,6 +24,10 @@ test("serial list stays complete after selection and preserves manual or unplugg
             return state.ports.map((name) => ({
               name,
               kind: "USB test reader",
+              description:
+                name === "COM2"
+                  ? "USB-SERIAL CH340 (COM2)"
+                  : "USB Serial Device",
             }));
           }
           if (command === "connect_device") {
@@ -40,46 +44,60 @@ test("serial list stays complete after selection and preserves manual or unplugg
   }, structuredClone(EMPTY_SNAPSHOT));
   await page.goto("/");
   const ports = page.getByRole("combobox", { name: "串口", exact: true });
-  await expect(ports.locator("option")).toHaveText([
+  await ports.click();
+  const options = page.getByRole("listbox", { name: "可用串口" }).getByRole("option");
+  await expect(options).toHaveText([
     "请选择串口",
-    "COM1 · USB test reader",
-    "COM2 · USB test reader",
-    "COM10 · USB test reader",
+    "USB Serial Device (COM1)USB test reader",
+    "USB-SERIAL CH340 (COM2)USB test reader",
+    "USB Serial Device (COM10)USB test reader",
   ]);
-  await ports.selectOption("COM2");
-  await expect(ports.locator("option")).toHaveCount(4);
-  await ports.selectOption("COM10");
+  await page
+    .getByRole("option", { name: /USB-SERIAL CH340 \(COM2\)/ })
+    .click();
+  await expect(ports).toHaveText("USB-SERIAL CH340 (COM2)");
+  await ports.click();
+  await expect(options).toHaveCount(4);
+  await ports.press("End");
+  await ports.press("Enter");
+  await expect(ports).toHaveText("USB Serial Device (COM10)");
   await page.evaluate(() => {
     (
       window as unknown as { serialTest: { ports: string[] } }
     ).serialTest.ports = ["COM1", "COM12"];
   });
   await page.getByRole("button", { name: "刷新串口" }).click();
-  await expect(ports).toHaveValue("COM10");
-  await expect(ports.locator("option")).toContainText([
+  await expect(ports).toHaveText("COM10");
+  await ports.click();
+  await expect(options).toContainText([
     "请选择串口",
-    "COM10 · 未检测到 / 手动指定",
+    "COM10未检测到 / 手动指定",
     "COM1",
     "COM12",
   ]);
+  await ports.press("Escape");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
   await page.getByRole("button", { name: "手动输入", exact: true }).click();
   await page.getByLabel("手动串口").fill("COM99");
   await page.getByRole("button", { name: "返回列表", exact: true }).click();
-  await expect(ports).toHaveValue("COM99");
+  await expect(ports).toHaveText("COM99");
   await page.evaluate(() => {
     (window as unknown as { serialTest: { fail: boolean } }).serialTest.fail =
       true;
   });
   await page.getByRole("button", { name: "刷新串口" }).click();
   await expect(page.getByRole("alert")).toContainText("串口扫描失败");
-  await expect(ports).toHaveValue("COM99");
+  await expect(ports).toHaveText("COM99");
   await page.evaluate(() => {
     (window as unknown as { serialTest: { fail: boolean } }).serialTest.fail =
       false;
   });
   await page.getByRole("button", { name: "刷新串口" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await ports.selectOption("COM12");
+  await ports.click();
+  await page
+    .getByRole("option", { name: /USB Serial Device \(COM12\)/ })
+    .click();
   await page.getByRole("button", { name: "连接设备", exact: true }).click();
   await expect
     .poll(() =>
@@ -168,6 +186,7 @@ for (const viewport of [
     await expect(page.getByLabel("工作台自动模式")).toHaveValue("0");
     await assertFits();
     await page.getByLabel("工作台自动模式").selectOption("2");
+    await page.getByLabel("工作台目标块").fill("1");
     await page.getByRole("button", { name: "应用模式", exact: true }).click();
     await expect(page.locator(".latest-data")).toContainText("DF-01 FRUITFLY");
     await expect(page.getByLabel("最近块数据", { exact: true })).toBeVisible();

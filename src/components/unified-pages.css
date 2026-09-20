@@ -81,9 +81,12 @@ main:is(.tool-page, .appearance-page) {
 .tool-page .device-settings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-areas: "connection auto" "radio session";
+  grid-template-areas: "connection radio" "auto session";
   gap: var(--panel-gap);
   align-items: stretch;
+}
+.app-shell .device-settings > .section {
+  margin-bottom: 0;
 }
 .communication-panel {
   grid-area: connection;
@@ -99,7 +102,7 @@ main:is(.tool-page, .appearance-page) {
 }
 .tool-page .saved-configuration {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   padding: 0 0 12px;
 }
@@ -115,6 +118,11 @@ main:is(.tool-page, .appearance-page) {
 .tool-page .saved-configuration strong {
   font-size: 14px;
   overflow-wrap: anywhere;
+}
+@media (min-width: 900px) and (max-width: 1100px) {
+  :lang(en) .tool-page .saved-configuration strong {
+    font-size: 12px;
+  }
 }
 .tool-page .setting-row {
   flex-direction: column;
@@ -213,10 +221,39 @@ main:is(.tool-page, .appearance-page) {
   line-height: 1.5;
 }
 .appearance-page .about-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 16px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+.about-product,
+.about-contact {
+  min-width: 0;
+}
+.about-contact {
+  padding-left: 20px;
+  border-left: 1px solid var(--line);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.about-band .about-contact > span:first-child {
+  margin-top: 0;
+}
+@media (max-width: 599px) {
+  .appearance-page .about-band {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+  }
+  .about-contact {
+    grid-column: 2;
+    padding: 10px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    text-align: left;
+  }
 }
 .appearance-page .theme-option {
   border-radius: 6px;

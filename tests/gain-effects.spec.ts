@@ -27,12 +27,13 @@ for (const motion of ["full", "reduced"] as const) {
     }, motion);
     await page.goto("/");
     await page.getByRole("button", { name: "连接设备", exact: true }).click();
-    await expect(page.locator(".rf-control")).toContainText("已保存 33 dB");
+    await expect(page.locator(".rf-control")).toContainText("已保存 48 dB");
     const slider = page.getByRole("slider", {
       name: "工作台天线增益",
       exact: true,
     });
     await slider.focus();
+    await slider.press("Home");
     await slider.press("End");
     await expect(page.locator(".gain-easter-egg")).toBeVisible();
     await expect(slider).toBeFocused();

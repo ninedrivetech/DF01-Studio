@@ -87,18 +87,19 @@ test("maximum gain reveals a dismissible white-eyed fly without saving hardware 
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "连接设备", exact: true }).click();
-  await expect(page.locator(".rf-control")).toContainText("已保存 33 dB");
+  await expect(page.locator(".rf-control")).toContainText("已保存 48 dB");
   const slider = page.getByRole("slider", {
     name: "工作台天线增益",
     exact: true,
   });
   await slider.focus();
+  await slider.press("Home");
   await slider.press("End");
   await expect(page.locator(".gain-easter-egg")).toHaveText(
     "白眼果蝇抖擞精神！",
   );
   await expect(slider).toBeFocused();
-  await expect(page.locator(".rf-control")).toContainText("已保存 33 dB");
+  await expect(page.locator(".rf-control")).toContainText("已保存 48 dB");
   await page.getByRole("button", { name: "关闭彩蛋" }).click();
   await expect(page.locator(".gain-easter-egg")).toHaveCount(0);
   await slider.focus();

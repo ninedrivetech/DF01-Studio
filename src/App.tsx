@@ -1,3 +1,4 @@
+import { t, useLanguage } from "./lib/i18n";
 import {
   useCallback,
   useEffect,
@@ -19,6 +20,7 @@ import {
   Grid2X2,
   KeyRound,
   Layers3,
+  Languages,
   ListFilter,
   LoaderCircle,
   LockKeyhole,
@@ -48,8 +50,9 @@ import {
   Zap,
 } from "lucide-react";
 import { api, errorMessage, hex, isDesktop, parseHex } from "./lib/api";
-import { COMMAND_NAMES, EMPTY_SNAPSHOT } from "./lib/types";
+import { COMMAND_NAMES, EMPTY_SNAPSHOT, GAIN_DB } from "./lib/types";
 import { Workbench } from "./components/Workbench";
+import { ProductFeatures, ProductMark } from "./components/ProductFeatures";
 import { ByteInspector, ByteComposer } from "./components/ByteInspector";
 import { WindowControls } from "./components/WindowControls";
 import { MemoryMap } from "./components/MemoryMap";
@@ -59,6 +62,7 @@ import "./components/memory-workspace.css";
 import { GainEasterEgg } from "./components/GainEasterEgg";
 import { LogExportDialog } from "./components/LogExportDialog";
 import { createLogExport } from "./lib/log-export";
+import { filterLogs } from "./lib/log-filter";
 import type { LogExport } from "./lib/log-export";
 import {
   isSoundMuted,
@@ -94,7 +98,8 @@ import {
 import type { Confirmation } from "./components/ui";
 const appIcon = new URL("../src-tauri/icons/icon.png", import.meta.url).href;
 
-type Page = "overview" | "memory" | "keys" | "device" | "logs" | "appearance";
+type Page =
+  "overview" | "memory" | "keys" | "device" | "logs" | "appearance" | "product";
 const DAISY_THEMES: Record<Theme, string> = {
   light: "corporate",
   graphite: "business",
@@ -108,6 +113,12 @@ interface BlockRecord {
   timestamp: number;
 }
 const NAV = [
+  {
+    id: "product" as const,
+    label: "偷油婆扩展",
+    icon: Volume2,
+    subtitle: "语音播报与启动时序",
+  },
   {
     id: "overview" as const,
     label: "读卡工作台",
@@ -188,6 +199,7 @@ const integer = (value: number, min: number, max: number, label: string) => {
 };
 
 export default function App() {
+  const { language, setLanguage } = useLanguage();
   const [page, setPage] = useState<Page>("overview");
   const [prefs, setPrefs] = useState(loadPreferences);
   const [soundMuted, setMuted] = useState(isSoundMuted);
@@ -199,6 +211,7 @@ export default function App() {
     address: 0,
     timeoutMs: 1500,
     simulation: !isDesktop,
+    simulationProductMode: 0,
     profile: "current",
   });
   const [busy, setBusy] = useState("");
@@ -249,6 +262,22 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null);
   const lastReportTimestamp = useRef(0);
   const connected = snapshot.connection.connected;
+  const cockroach = connected && snapshot.configuration?.productMode === 1;
+  const [productChanging, setProductChanging] = useState(false);
+  const previousProduct = useRef(false);
+  useEffect(() => {
+    if (previousProduct.current === cockroach) return;
+    previousProduct.current = cockroach;
+    setProductChanging(true);
+    setPage((current) =>
+      cockroach ? "product" : current === "product" ? "overview" : current,
+    );
+    const timer = setTimeout(() => setProductChanging(false), 1200);
+    return () => clearTimeout(timer);
+  }, [cockroach]);
+  useEffect(() => {
+    document.title = cockroach ? t("偷油婆一号") : t("果蝇1号 · DF-01");
+  }, [cockroach, language]);
   const fullCapabilities = connected;
   const currentPage = NAV.find((n) => n.id === page)!;
   const notify = useCallback(
@@ -429,7 +458,7 @@ export default function App() {
     }
   }, [saved?.moduleId, connected]);
   useEffect(() => {
-    if (saved) setAutoMode(saved.autoMode);
+    if (saved) setAutoMode(saved.autoMode <= 2 ? saved.autoMode : -1);
   }, [saved?.autoMode, connected]);
   useEffect(() => {
     if (saved) setAutoBlock(saved.autoBlock);
@@ -468,6 +497,7 @@ export default function App() {
     mode: number,
     target = snapshot.configuration?.autoBlock ?? snapshot.autoBlock ?? 1,
   ) => {
+    integer(mode, 0, 2, "模式");
     if (mode !== 2)
       target = snapshot.configuration?.autoBlock ?? snapshot.autoBlock ?? 1;
     integer(target, 0, 255, "块号");
@@ -662,14 +692,11 @@ export default function App() {
       }
     });
   };
-  const activeLogs = (pausedLogs ?? snapshot.logs).filter(
-    (log) =>
-      (logFilter === "all" ||
-        log.direction === logFilter ||
-        (logFilter === "error" && ["warning", "error"].includes(log.level))) &&
-      `${log.hex} ${log.message}`
-        .toLowerCase()
-        .includes(logQuery.toLowerCase()),
+  const activeLogs = filterLogs(
+    pausedLogs ?? snapshot.logs,
+    logFilter,
+    logQuery,
+    language,
   );
   const exportLogs = () => {
     const directions: Record<string, string> = {
@@ -742,55 +769,70 @@ export default function App() {
 
   return (
     <div
-      className="app-shell"
+      className={`app-shell ${productChanging ? "product-changing" : ""}`}
+      data-product={cockroach ? "cockroach" : "fruitfly"}
       onPointerDownCapture={unlockAudio}
       onKeyDownCapture={unlockAudio}
     >
+      {productChanging && (
+        <div className="product-transition" role="status">
+          {t(cockroach ? "已切换至偷油婆一号" : "已切换至果蝇一号")}
+        </div>
+      )}
       {menuOpen && (
         <button
           className="nav-scrim"
-          aria-label="关闭导航"
+          aria-label={t("关闭导航")}
           onClick={() => setMenuOpen(false)}
         />
       )}
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-symbol">
-            <img src={appIcon} alt="" width="41" height="41" />
+            <ProductMark cockroach={cockroach} />
           </div>
-          <div>
-            <strong>果蝇1号</strong>
-            <small>DF-01 · FIELD STATION</small>
+          <div className="brand-copy">
+            <strong>{t(cockroach ? "偷油婆一号" : "果蝇1号")}</strong>
+            <small>
+              {cockroach
+                ? "PRODUCT 01 · VOICE STATION"
+                : "DF-01 · FIELD STATION"}
+            </small>
           </div>
         </div>
         <div className="workspace-label">
-          观测工作区 <span>01</span>
+          {t("观测工作区 ")}
+          <span>01</span>
         </div>
-        <nav aria-label="主导航">
-          {NAV.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={`nav-item ${page === id ? "active" : ""}`}
-              aria-current={page === id ? "page" : undefined}
-              onClick={() => changePage(id)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {page === id && <ChevronRight size={15} />}
-            </button>
-          ))}
+        <nav aria-label={t("主导航")}>
+          {NAV.filter((item) => item.id !== "product" || cockroach).map(
+            ({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                className={`nav-item ${page === id ? "active" : ""}`}
+                aria-current={page === id ? "page" : undefined}
+                onClick={() => changePage(id)}
+              >
+                <Icon size={19} />
+                <span>{t(label)}</span>
+                {page === id && <ChevronRight size={15} />}
+              </button>
+            ),
+          )}
         </nav>
         <div className="sidebar-bottom">
           <div className="module-mark">
             <Radio size={21} />
             <div>
-              <strong>DF-01 / UART</strong>
+              <strong>
+                {cockroach ? "PRODUCT 01 / UART" : "DF-01 / UART"}
+              </strong>
               <small>ISO 14443 A · B</small>
             </div>
           </div>
           <div className="version">
-            <span>感知 · 解码 · 控制</span>
-            <span>v1.0.0</span>
+            <span>{t("感知 · 解码 · 控制")}</span>
+            <span>v1.1.1</span>
           </div>
         </div>
       </aside>
@@ -798,19 +840,33 @@ export default function App() {
         <header className="topbar">
           <div className="breadcrumb">
             <IconButton
-              label="打开导航"
+              label={t("打开导航")}
               className="mobile-menu"
               onClick={() => setMenuOpen(true)}
             >
               <Menu size={20} />
             </IconButton>
-            <span>工作空间</span>
+            <span>{t("工作空间")}</span>
             <ChevronRight size={14} />
-            <strong>{currentPage.label}</strong>
+            <strong>{t(currentPage.label)}</strong>
           </div>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="btn btn-ghost language-toggle"
+              aria-label={
+                language === "zh-CN" ? "Switch to English" : "切换到中文"
+              }
+              title={language === "zh-CN" ? "Switch to English" : "切换到中文"}
+              onClick={() => setLanguage(language === "zh-CN" ? "en" : "zh-CN")}
+            >
+              <Languages size={17} aria-hidden="true" />
+              <span lang={language === "zh-CN" ? "en" : "zh-CN"}>
+                {language === "zh-CN" ? "EN" : "中文"}
+              </span>
+            </button>
             <IconButton
-              label={soundMuted ? "取消全局静音" : "全局静音"}
+              label={t(soundMuted ? "取消全局静音" : "全局静音")}
               aria-pressed={soundMuted}
               onClick={() => {
                 const next = !soundMuted;
@@ -821,9 +877,9 @@ export default function App() {
               {soundMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </IconButton>
             <IconButton
-              label={
-                isNightTheme(prefs.theme) ? "切换到日间主题" : "切换到夜间主题"
-              }
+              label={t(
+                isNightTheme(prefs.theme) ? "切换到日间主题" : "切换到夜间主题",
+              )}
               onClick={() => setPrefs(toggleAppearance)}
             >
               {isNightTheme(prefs.theme) ? (
@@ -851,7 +907,7 @@ export default function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                DF-01 WORKSTATION{" "}
+                {cockroach ? "VOICE WORKSTATION" : "DF-01 WORKSTATION"}{" "}
                 <span>
                   /{" "}
                   {String(NAV.findIndex((n) => n.id === page) + 1).padStart(
@@ -860,27 +916,27 @@ export default function App() {
                   )}
                 </span>
               </div>
-              <h1>{currentPage.label}</h1>
+              <h1>{t(currentPage.label)}</h1>
             </div>
             <div className={`connection-badge ${connected ? "online" : ""}`}>
               <span className="status-dot" />
               {connected
                 ? snapshot.connection.simulation
-                  ? "模拟设备已连接"
-                  : "设备在线"
-                : "设备未连接"}
+                  ? t("模拟设备已连接")
+                  : t("设备在线")
+                : t("设备未连接")}
             </div>
           </div>
           <section
             className={`connection-strip ${connected ? "is-connected" : ""} ${connectionExpanded ? "expanded" : ""}`}
-            aria-label="串口连接"
+            aria-label={t("串口连接")}
           >
             {connected && (
               <div className="connection-summary">
                 <div>
                   <strong>
                     {snapshot.connection.simulation
-                      ? "模拟设备"
+                      ? t("模拟设备")
                       : snapshot.connection.port}
                   </strong>
                   <span>
@@ -892,7 +948,9 @@ export default function App() {
                   </span>
                 </div>
                 <IconButton
-                  label={connectionExpanded ? "收起连接参数" : "展开连接参数"}
+                  label={t(
+                    connectionExpanded ? "收起连接参数" : "展开连接参数",
+                  )}
                   aria-expanded={connectionExpanded}
                   onClick={() => setConnectionExpanded((value) => !value)}
                 >
@@ -903,9 +961,9 @@ export default function App() {
             <div className="connection-icon">
               <Cable size={22} />
             </div>
-            <Field label="连接方式">
+            <Field label={t("连接方式")}>
               <select
-                aria-label="连接方式"
+                aria-label={t("连接方式")}
                 value={config.simulation ? "simulation" : "serial"}
                 disabled={connected || !!busy}
                 onChange={(e) =>
@@ -916,22 +974,42 @@ export default function App() {
                   }))
                 }
               >
-                <option value="serial">串口设备</option>
-                <option value="simulation">模拟设备</option>
+                <option value="serial">{t("串口设备")}</option>
+                <option value="simulation">{t("模拟设备")}</option>
               </select>
             </Field>
-            <SerialPortPicker
-              value={config.port}
-              onChange={(port) => setConfig((c) => ({ ...c, port }))}
-              disabled={connected || !!busy}
-              simulation={config.simulation}
-            />
-            <Field label="波特率">
-              <input aria-label="连接波特率" value="115200" readOnly />
+            {config.simulation ? (
+              <Field label={t("模拟产品")}>
+                <select
+                  aria-label={t("模拟产品")}
+                  value={config.simulationProductMode ?? 0}
+                  disabled={connected || !!busy}
+                  onChange={(event) =>
+                    setConfig((current) => ({
+                      ...current,
+                      simulationProductMode: Number(event.target.value) as
+                        0 | 1,
+                    }))
+                  }
+                >
+                  <option value={0}>{t("果蝇一号模拟器")}</option>
+                  <option value={1}>{t("偷油婆一号模拟器")}</option>
+                </select>
+              </Field>
+            ) : (
+              <SerialPortPicker
+                value={config.port}
+                onChange={(port) => setConfig((c) => ({ ...c, port }))}
+                disabled={connected || !!busy}
+                simulation={config.simulation}
+              />
+            )}
+            <Field label={t("波特率")}>
+              <input aria-label={t("连接波特率")} value="115200" readOnly />
             </Field>
-            <Field label="地址">
+            <Field label={t("地址")}>
               <NumberInput
-                aria-label="连接地址"
+                aria-label={t("连接地址")}
                 min={0}
                 max={255}
                 value={connected ? snapshot.connection.address : config.address}
@@ -975,22 +1053,34 @@ export default function App() {
               }
             >
               {connected ? <Unplug size={17} /> : <Plug size={17} />}
-              {connected ? "断开连接" : "连接设备"}
+              {connected ? t("断开连接") : t("连接设备")}
             </Button>
           </section>
           <div className="protocol-strip">
             <ShieldCheck size={14} />
-            <span>果蝇1号 · DF-01</span>
+            <span>{t(cockroach ? "偷油婆一号" : "果蝇1号 · DF-01")}</span>
             <span>115200 · 8N1</span>
             <span>
               {snapshot.configuration
-                ? "配置已同步"
+                ? t("配置已同步")
                 : connected
-                  ? "配置未同步"
-                  : "等待连接"}
+                  ? t("配置未同步")
+                  : t("等待连接")}
             </span>
           </div>
           <div className="page-content" key={page}>
+            {page === "product" && cockroach && snapshot.configuration && (
+              <ProductFeatures
+                saved={snapshot.configuration}
+                simulation={snapshot.connection.simulation}
+                busy={!!busy}
+                onExecute={(label, request) =>
+                  void run(label, async () => {
+                    await execute(request);
+                  })
+                }
+              />
+            )}
             {page === "overview" && (
               <Workbench
                 snapshot={snapshot}
@@ -1035,12 +1125,12 @@ export default function App() {
             {page === "memory" && (
               <div className="memory-workspace">
                 <div className="memory-modebar">
-                  <div className="segmented" aria-label="卡片存储类型">
+                  <div className="segmented" aria-label={t("卡片存储类型")}>
                     <button
                       className={memoryKind === "classic" ? "active" : ""}
                       onClick={() => setMemoryKind("classic")}
                     >
-                      分块卡 / 64 块
+                      {t("分块卡 / 64 块")}
                     </button>
                     <button
                       className={memoryKind === "pages" ? "active" : ""}
@@ -1058,7 +1148,7 @@ export default function App() {
                         else action();
                       }}
                     >
-                      分页卡 / 连续读取
+                      {t("分页卡 / 连续读取")}
                     </button>
                   </div>
                   {memoryKind === "classic" && (
@@ -1075,14 +1165,14 @@ export default function App() {
                         }}
                       />
                       <IconButton
-                        label="导入当前块到编辑器"
+                        label={t("导入当前块到编辑器")}
                         disabled={!!busy}
                         onClick={() => fileInput.current?.click()}
                       >
                         <FileUp size={18} />
                       </IconButton>
                       <IconButton
-                        label="导出已读数据（不含控制块）"
+                        label={t("导出已读数据（不含控制块）")}
                         disabled={!Object.keys(records).length}
                         onClick={exportMemory}
                       >
@@ -1093,21 +1183,21 @@ export default function App() {
                         onClick={() => batchRead(true)}
                       >
                         <Layers3 size={16} />
-                        读取整卡
+                        {t("读取整卡")}
                       </Button>
                     </div>
                   )}
                 </div>
                 {memoryKind === "pages" ? (
                   <Section
-                    title="连续页读取"
+                    title={t("连续页读取")}
                     className="memory-pages-section"
-                    meta={<span className="tag">4 页 / 16 字节</span>}
+                    meta={<span className="tag">{t("4 页 / 16 字节")}</span>}
                   >
                     <div className="page-address">
-                      <Field label="起始页（十进制）">
+                      <Field label={t("起始页（十进制）")}>
                         <NumberInput
-                          aria-label="起始页"
+                          aria-label={t("起始页")}
                           min={0}
                           max={255}
                           value={pageNumber}
@@ -1138,14 +1228,16 @@ export default function App() {
                         }
                       >
                         <ArrowDownLeft size={16} />
-                        读取连续页
+                        {t("读取连续页")}
                       </Button>
                     </div>
                     {snapshot.connection.simulation && (
                       <div className="inline-warning">
                         <Radio size={17} />
                         <span>
-                          模拟器当前为分块卡。分页卡 页读取需连接对应实体卡。
+                          {t(
+                            "模拟器当前为分块卡。分页卡 页读取需连接对应实体卡。",
+                          )}
                         </span>
                       </div>
                     )}
@@ -1164,10 +1256,11 @@ export default function App() {
                           ))}
                         </div>
                         <div className="record-origin">
-                          起始页 {pageData.page} · 卡号{" "}
-                          <code>{pageData.uid}</code>
+                          {t("起始页 ")}
+                          {pageData.page}
+                          {t(" · 卡号")} <code>{pageData.uid}</code>
                           <IconButton
-                            label="复制连续页数据"
+                            label={t("复制连续页数据")}
                             onClick={() => copy(hex(pageData.data))}
                           >
                             <Copy size={14} />
@@ -1178,7 +1271,7 @@ export default function App() {
                     ) : (
                       <Empty
                         icon={<Layers3 size={27} />}
-                        title="尚未读取连续页"
+                        title={t("尚未读取连续页")}
                       />
                     )}
                   </Section>
@@ -1188,7 +1281,8 @@ export default function App() {
                       <div className="batch-progress">
                         <LoaderCircle size={17} className="spin" />
                         <span>
-                          正在读取 {batch.current} / {batch.total}
+                          {t("正在读取 ")}
+                          {batch.current} / {batch.total}
                         </span>
                         <progress value={batch.current} max={batch.total} />
                         <Button
@@ -1197,7 +1291,7 @@ export default function App() {
                           }}
                         >
                           <Square size={14} />
-                          停止
+                          {t("停止")}
                         </Button>
                       </div>
                     )}
@@ -1212,15 +1306,19 @@ export default function App() {
                         <section className="section memory-block-section">
                           <header className="memory-block-heading">
                             <div className="memory-block-identity">
-                              <h2>{`块 ${String(block).padStart(2, "0")}`}</h2>
+                              <h2>
+                                {t(`块 ${String(block).padStart(2, "0")}`)}
+                              </h2>
                               <span
                                 className={`tag ${block % 4 === 3 ? "warning" : ""}`}
                               >
                                 {block === 0
-                                  ? "只读 · 制造商块"
+                                  ? t("只读 · 制造商块")
                                   : block % 4 === 3
-                                    ? "扇区控制块"
-                                    : `扇区 ${Math.floor(block / 4)} · 数据块`}
+                                    ? t("扇区控制块")
+                                    : t(
+                                        `扇区 ${Math.floor(block / 4)} · 数据块`,
+                                      )}
                               </span>
                             </div>
                             <div className="editor-actions">
@@ -1230,7 +1328,7 @@ export default function App() {
                                 onClick={readBlock}
                               >
                                 <ArrowDownLeft size={16} />
-                                读取块
+                                {t("读取块")}
                               </Button>
                               <Button
                                 disabled={
@@ -1239,10 +1337,10 @@ export default function App() {
                                 onClick={writeBlock}
                               >
                                 <ArrowUpRight size={16} />
-                                写入块
+                                {t("写入块")}
                               </Button>
                               <IconButton
-                                label="预览写入帧"
+                                label={t("预览写入帧")}
                                 disabled={block === 0 || !!busy}
                                 onClick={() =>
                                   void run("预览命令", async () => {
@@ -1255,7 +1353,7 @@ export default function App() {
                                 <Search size={17} />
                               </IconButton>
                               <IconButton
-                                label="填充零值"
+                                label={t("填充零值")}
                                 disabled={block === 0 || !!busy}
                                 onClick={() => {
                                   const apply = () => {
@@ -1279,7 +1377,10 @@ export default function App() {
                             </div>
                           </header>
                           <div className="editor-toolbar">
-                            <div className="segmented" aria-label="编辑格式">
+                            <div
+                              className="segmented"
+                              aria-label={t("编辑格式")}
+                            >
                               <button
                                 className={editorMode === "hex" ? "active" : ""}
                                 onClick={() => setEditorMode("hex")}
@@ -1292,17 +1393,19 @@ export default function App() {
                                 }
                                 onClick={() => setEditorMode("text")}
                               >
-                                编码输入
+                                {t("编码输入")}
                               </button>
                             </div>
                             <span className="section-meta">
                               {composerDirty
-                                ? "编码草稿尚未应用"
+                                ? t("编码草稿尚未应用")
                                 : editorDirty
-                                  ? "有未写入的修改"
+                                  ? t("有未写入的修改")
                                   : records[block]
-                                    ? `读取于 ${time(records[block].timestamp)}`
-                                    : "尚未读取"}
+                                    ? t(
+                                        `读取于 ${time(records[block].timestamp)}`,
+                                      )
+                                    : t("尚未读取")}
                             </span>
                           </div>
                           <div hidden={editorMode !== "hex"}>
@@ -1316,7 +1419,7 @@ export default function App() {
                                       .toUpperCase()}
                                   </span>
                                   <input
-                                    aria-label={`字节 ${i}`}
+                                    aria-label={t(`字节 ${i}`)}
                                     value={value}
                                     maxLength={2}
                                     disabled={
@@ -1378,7 +1481,9 @@ export default function App() {
                             <div className="inline-warning">
                               <LockKeyhole size={17} />
                               <span>
-                                字节 0–5：Key A · 6–9：访问条件 · 10–15：Key B
+                                {t(
+                                  "字节 0–5：Key A · 6–9：访问条件 · 10–15：Key B",
+                                )}
                               </span>
                             </div>
                           )}
@@ -1390,7 +1495,7 @@ export default function App() {
                           )}
                         </section>
                         <Section
-                          title="当前扇区"
+                          title={t("当前扇区")}
                           className="memory-sector-section"
                           meta={
                             <Button
@@ -1399,7 +1504,7 @@ export default function App() {
                               onClick={() => batchRead(false)}
                             >
                               <RefreshCw size={15} />
-                              读取扇区
+                              {t("读取扇区")}
                             </Button>
                           }
                         >
@@ -1412,9 +1517,9 @@ export default function App() {
                                   <code>
                                     {records[b]
                                       ? b % 4 === 3
-                                        ? "控制块内容已隐藏"
+                                        ? t("控制块内容已隐藏")
                                         : hex(records[b].data)
-                                      : "尚未读取"}
+                                      : t("尚未读取")}
                                   </code>
                                   {records[b] && (
                                     <Check size={14} className="success-text" />
@@ -1425,7 +1530,8 @@ export default function App() {
                           </div>
                           {records[block] && (
                             <div className="record-origin">
-                              来源卡号 <code>{records[block].uid}</code>
+                              {t("来源卡号 ")}
+                              <code>{records[block].uid}</code>
                             </div>
                           )}
                         </Section>
@@ -1438,16 +1544,16 @@ export default function App() {
             {page === "keys" && (
               <div className="settings-layout">
                 <Section
-                  title="模块认证密钥"
+                  title={t("模块认证密钥")}
                   icon={<KeyRound size={16} />}
                   className="tool-panel keys-editor"
                   meta={<span className="section-meta">Key A / Key B</span>}
                 >
                   <p className="panel-description">
-                    输入 6 字节认证密钥，装载后保存到读卡模块。
+                    {t("输入 6 字节认证密钥，装载后保存到读卡模块。")}
                   </p>
                   <div className="key-form">
-                    <Field label="Key A · 6 字节">
+                    <Field label={t("Key A · 6 字节")}>
                       <input
                         aria-label="Key A"
                         className="mono"
@@ -1467,9 +1573,9 @@ export default function App() {
                         onChange={(e) => setSameKey(e.target.checked)}
                       />
                       <span className="switch-track" />
-                      Key B 与 Key A 相同
+                      {t("Key B 与 Key A 相同")}
                     </label>
-                    <Field label="Key B · 6 字节">
+                    <Field label={t("Key B · 6 字节")}>
                       <input
                         aria-label="Key B"
                         className="mono"
@@ -1486,7 +1592,7 @@ export default function App() {
                         checked={showKeys}
                         onChange={(e) => setShowKeys(e.target.checked)}
                       />
-                      显示密钥
+                      {t("显示密钥")}
                     </label>
                     <div className="form-actions">
                       <Button
@@ -1520,7 +1626,7 @@ export default function App() {
                         }}
                       >
                         <KeyRound size={17} />
-                        装载密钥
+                        {t("装载密钥")}
                       </Button>
                       <Button
                         onClick={() => {
@@ -1528,44 +1634,46 @@ export default function App() {
                           setKeyB("");
                         }}
                       >
-                        清空输入
+                        {t("清空输入")}
                       </Button>
                     </div>
                   </div>
                 </Section>
                 <Section
-                  title="密钥状态"
+                  title={t("密钥状态")}
                   icon={<ShieldCheck size={16} />}
                   className="tool-panel keys-status"
                 >
                   <div className="security-visual">
                     <ShieldCheck size={24} />
-                    <strong>设备持久化存储</strong>
+                    <strong>{t("设备持久化存储")}</strong>
                   </div>
                   <dl className="session-details">
-                    <dt>Key A 长度</dt>
-                    <dd>6 字节</dd>
-                    <dt>Key B 长度</dt>
-                    <dd>6 字节</dd>
-                    <dt>保存位置</dt>
-                    <dd>读卡模块</dd>
-                    <dt>配置同步</dt>
-                    <dd>{snapshot.configuration ? "已读取" : "未同步"}</dd>
-                    <dt>当前 Key A</dt>
+                    <dt>{t("Key A 长度")}</dt>
+                    <dd>{t("6 字节")}</dd>
+                    <dt>{t("Key B 长度")}</dt>
+                    <dd>{t("6 字节")}</dd>
+                    <dt>{t("保存位置")}</dt>
+                    <dd>{t("读卡模块")}</dd>
+                    <dt>{t("配置同步")}</dt>
+                    <dd>
+                      {snapshot.configuration ? t("已读取") : t("未同步")}
+                    </dd>
+                    <dt>{t("当前 Key A")}</dt>
                     <dd className="mono">
                       {snapshot.configuration
                         ? showKeys
                           ? hex(snapshot.configuration.keyA)
                           : "••••••••••••"
-                        : "未同步"}
+                        : t("未同步")}
                     </dd>
-                    <dt>当前 Key B</dt>
+                    <dt>{t("当前 Key B")}</dt>
                     <dd className="mono">
                       {snapshot.configuration
                         ? showKeys
                           ? hex(snapshot.configuration.keyB)
                           : "••••••••••••"
-                        : "未同步"}
+                        : t("未同步")}
                     </dd>
                   </dl>
                 </Section>
@@ -1574,7 +1682,7 @@ export default function App() {
             {page === "device" && (
               <div className="device-settings">
                 <Section
-                  title="通信参数"
+                  title={t("通信参数")}
                   icon={<Settings2 size={16} />}
                   className="tool-panel communication-panel"
                   meta={
@@ -1587,13 +1695,13 @@ export default function App() {
                       }
                     >
                       <RefreshCw size={14} />
-                      读取配置
+                      {t("读取配置")}
                     </Button>
                   }
                 >
                   <div className="saved-configuration">
                     <div>
-                      <span>模块 ID</span>
+                      <span>{t("模块 ID")}</span>
                       <strong>
                         {snapshot.configuration
                           ? "0x" +
@@ -1601,43 +1709,53 @@ export default function App() {
                               .toString(16)
                               .padStart(2, "0")
                               .toUpperCase()
-                          : "未同步"}
+                          : t("未同步")}
                       </strong>
                     </div>
                     <div>
-                      <span>模块波特率</span>
+                      <span>{t("模块波特率")}</span>
                       <strong>
-                        {snapshot.configuration?.baudRate ?? "未同步"}
+                        {snapshot.configuration?.baudRate ?? t("未同步")}
                       </strong>
                     </div>
                     <div>
-                      <span>防重读</span>
+                      <span>{t("产品模式")}</span>
+                      <strong>
+                        {!snapshot.configuration
+                          ? t("未同步")
+                          : snapshot.configuration.productMode == null
+                            ? t("旧固件未提供")
+                            : snapshot.configuration.productMode === 0
+                              ? t("果蝇")
+                              : t("偷油婆")}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>{t("防重读")}</span>
                       <strong>
                         {snapshot.configuration
                           ? snapshot.configuration.resetMs === 0
-                            ? "无限期"
+                            ? t("无限期")
                             : snapshot.configuration.resetMs + " ms"
-                          : "未同步"}
+                          : t("未同步")}
                       </strong>
                     </div>
                     <div>
-                      <span>天线增益</span>
+                      <span>{t("天线增益")}</span>
                       <strong>
                         {snapshot.configuration
-                          ? [18, 23, 18, 23, 33, 38, 43, 48][
-                              snapshot.configuration.antennaGain
-                            ] + " dB"
-                          : "未同步"}
+                          ? GAIN_DB[snapshot.configuration.antennaGain] + " dB"
+                          : t("未同步")}
                       </strong>
                     </div>
                   </div>
                   <div className="setting-row">
                     <div>
-                      <h3>模块地址</h3>
-                      <p>地址范围 0–255，默认地址为 0。</p>
+                      <h3>{t("模块地址")}</h3>
+                      <p>{t("地址范围 0–255，默认地址为 0。")}</p>
                     </div>
                     <div className="setting-controls">
-                      <Field label="新地址">
+                      <Field label={t("新地址")}>
                         <NumberInput
                           min={0}
                           max={255}
@@ -1668,41 +1786,59 @@ export default function App() {
                           }
                         }}
                       >
-                        应用
+                        {t("应用")}
                       </Button>
                     </div>
                   </div>
                 </Section>
                 <Section
-                  title="模块自动方式"
+                  title={t("模块自动方式")}
                   icon={<Zap size={16} />}
                   className="tool-panel automatic-panel"
                   meta={
                     <span className="tag">
                       {snapshot.autoMode === null
-                        ? "当前模式未知"
-                        : ["自动读卡号", "自动读取已关闭", "自动读数据块"][
-                            snapshot.autoMode
-                          ]}
+                        ? t("当前模式未知")
+                        : t(
+                            ["自动读卡号", "自动读取已关闭", "自动读数据块"][
+                              snapshot.autoMode
+                            ] ??
+                              (snapshot.autoMode === 3
+                                ? cockroach
+                                  ? "语音模式 · 请在扩展页设置"
+                                  : "语音自动读取"
+                                : "当前设备模式不支持，请选择模式"),
+                          )}
                     </span>
                   }
                 >
                   <div className="auto-form">
-                    <Field label="自动模式">
+                    <Field label={t("自动模式")}>
                       <select
-                        aria-label="自动模式"
+                        aria-label={t("自动模式")}
                         disabled={!!busy}
                         value={autoMode}
                         onChange={(e) => setAutoMode(Number(e.target.value))}
                       >
-                        <option value="0">00 · 自动读卡号</option>
-                        <option value="1">01 · 关闭自动读取</option>
-                        <option value="2">02 · 自动读数据块</option>
+                        {autoMode === -1 && (
+                          <option value={-1} disabled>
+                            {t(
+                              snapshot.autoMode === 3
+                                ? cockroach
+                                  ? "语音模式 · 请在扩展页设置"
+                                  : "语音自动读取"
+                                : "当前设备模式不支持，请选择模式",
+                            )}
+                          </option>
+                        )}
+                        <option value="0">{t("00 · 自动读卡号")}</option>
+                        <option value="1">{t("01 · 关闭自动读取")}</option>
+                        <option value="2">{t("02 · 自动读数据块")}</option>
                       </select>
                     </Field>
-                    <Field label="目标块 / 页">
+                    <Field label={t("目标块 / 页")}>
                       <NumberInput
-                        aria-label="自动读取块号"
+                        aria-label={t("自动读取块号")}
                         min={0}
                         max={255}
                         disabled={autoMode !== 2 || !!busy}
@@ -1710,7 +1846,7 @@ export default function App() {
                         onValueChange={setAutoBlock}
                       />
                     </Field>
-                    <Field label="保留字段">
+                    <Field label={t("保留字段")}>
                       <input
                         value={hex(
                           snapshot.configuration?.autoInitialValue ?? [
@@ -1742,34 +1878,36 @@ export default function App() {
                       }}
                     >
                       <Zap size={16} />
-                      应用模式
+                      {t("应用模式")}
                     </Button>
                   </div>
                 </Section>
                 <Section
-                  title="射频与防重读"
+                  title={t("射频与防重读")}
                   icon={<Radio size={16} />}
                   className="tool-panel radio-panel"
                 >
                   <div className="setting-row">
                     <div>
-                      <h3>防重读 RESET 时长</h3>
+                      <h3>{t("防重读 RESET 时长")}</h3>
                       <p>
-                        已保存：
+                        {t("已保存：")}
                         {snapshot.configuration
                           ? snapshot.configuration.resetMs === 0
-                            ? "无限期"
+                            ? t("无限期")
                             : snapshot.configuration.resetMs + " ms"
-                          : "未同步"}
+                          : t("未同步")}
                       </p>
                     </div>
                     <div className="setting-controls">
-                      <Field label="时长（ms，0 或 100–3000）">
+                      <Field label={t("时长（ms，0 或 100–3000）")}>
                         <NumberInput
-                          aria-label="防重读时长"
+                          aria-label={t("防重读时长")}
                           disabled={!!busy}
                           min={0}
                           max={3000}
+                          validate={(value) => value === 0 || value >= 100}
+                          errorMessage="防重读时长必须为 0 或 100–3000 ms"
                           value={resetMs}
                           onValueChange={setResetMs}
                         />
@@ -1779,29 +1917,30 @@ export default function App() {
                         onClick={saveReset}
                       >
                         <Check size={16} />
-                        保存时长
+                        {t("保存时长")}
                       </Button>
                     </div>
                   </div>
                   <div className="setting-row">
                     <div>
-                      <h3>天线接收增益</h3>
+                      <h3>{t("天线接收增益")}</h3>
                       <p>
-                        已保存：
+                        {t("已保存：")}
                         {snapshot.configuration
-                          ? "档位 " +
+                          ? t("档位") +
+                            " " +
                             snapshot.configuration.antennaGain +
                             " · " +
-                            [18, 23, 18, 23, 33, 38, 43, 48][
-                              snapshot.configuration.antennaGain
-                            ] +
+                            GAIN_DB[snapshot.configuration.antennaGain] +
                             " dB"
-                          : "未同步"}
+                          : t("未同步")}
                       </p>
                     </div>
                     <div className="setting-controls">
                       <Field
-                        label={`增益档位 ${antennaGain} · ${[18, 23, 18, 23, 33, 38, 43, 48][antennaGain]} dB`}
+                        label={t(
+                          `增益档位 ${antennaGain} · ${GAIN_DB[antennaGain]} dB`,
+                        )}
                       >
                         <input
                           type="range"
@@ -1809,8 +1948,10 @@ export default function App() {
                           max={7}
                           step={1}
                           className="gain-slider"
-                          aria-label="天线增益"
-                          aria-valuetext={`档位 ${antennaGain}，${[18, 23, 18, 23, 33, 38, 43, 48][antennaGain]} dB`}
+                          aria-label={t("天线增益")}
+                          aria-valuetext={t(
+                            `档位 ${antennaGain}，${GAIN_DB[antennaGain]} dB`,
+                          )}
                           disabled={!!busy}
                           value={antennaGain}
                           onChange={(e) => changeGain(Number(e.target.value))}
@@ -1826,24 +1967,24 @@ export default function App() {
                         onClick={saveGain}
                       >
                         <Check size={16} />
-                        保存增益
+                        {t("保存增益")}
                       </Button>
                     </div>
                   </div>
                 </Section>
                 <Section
-                  title="会话选项"
+                  title={t("会话选项")}
                   icon={<TimerReset size={16} />}
                   className="tool-panel session-panel"
                 >
                   <div className="setting-row">
                     <div>
-                      <h3>响应超时</h3>
-                      <p>连接前设置，当前连接中不可更改。</p>
+                      <h3>{t("响应超时")}</h3>
+                      <p>{t("连接前设置，当前连接中不可更改。")}</p>
                     </div>
-                    <Field label="毫秒">
+                    <Field label={t("毫秒")}>
                       <NumberInput
-                        aria-label="响应超时"
+                        aria-label={t("响应超时")}
                         min={100}
                         max={15000}
                         value={config.timeoutMs}
@@ -1862,12 +2003,14 @@ export default function App() {
             )}
             {page === "logs" && (
               <Section
-                title="收发记录"
+                title={t("收发记录")}
                 icon={<Terminal size={16} />}
                 className="tool-panel logs-panel"
                 meta={
                   <span className="section-meta">
-                    {activeLogs.length} 条{pausedLogs ? " · 显示已暂停" : ""}
+                    {activeLogs.length}
+                    {t(" 条")}
+                    {pausedLogs ? t(" · 显示已暂停") : ""}
                   </span>
                 }
               >
@@ -1875,8 +2018,8 @@ export default function App() {
                   <div className="search-input">
                     <Search size={16} />
                     <input
-                      aria-label="搜索日志"
-                      placeholder="搜索报文或状态…"
+                      aria-label={t("搜索日志")}
+                      placeholder={t("搜索报文或状态…")}
                       value={logQuery}
                       onChange={(e) => setLogQuery(e.target.value)}
                     />
@@ -1884,20 +2027,20 @@ export default function App() {
                   <div className="log-filter">
                     <ListFilter size={17} />
                     <select
-                      aria-label="日志筛选"
+                      aria-label={t("日志筛选")}
                       value={logFilter}
                       onChange={(e) => setLogFilter(e.target.value)}
                     >
-                      <option value="all">全部记录</option>
-                      <option value="tx">发送 TX</option>
-                      <option value="rx">接收 RX</option>
-                      <option value="system">系统</option>
-                      <option value="error">异常</option>
+                      <option value="all">{t("全部记录")}</option>
+                      <option value="tx">{t("发送 TX")}</option>
+                      <option value="rx">{t("接收 RX")}</option>
+                      <option value="system">{t("系统")}</option>
+                      <option value="error">{t("异常")}</option>
                     </select>
                   </div>
                   <div className="toolbar-actions">
                     <IconButton
-                      label={pausedLogs ? "恢复日志显示" : "暂停日志显示"}
+                      label={t(pausedLogs ? "恢复日志显示" : "暂停日志显示")}
                       onClick={() =>
                         setPausedLogs((v) => (v ? null : [...snapshot.logs]))
                       }
@@ -1905,14 +2048,14 @@ export default function App() {
                       {pausedLogs ? <Play size={17} /> : <Pause size={17} />}
                     </IconButton>
                     <IconButton
-                      label="导出筛选日志"
+                      label={t("导出筛选日志")}
                       disabled={!activeLogs.length}
                       onClick={exportLogs}
                     >
                       <Download size={18} />
                     </IconButton>
                     <IconButton
-                      label="清空日志"
+                      label={t("清空日志")}
                       disabled={!!busy || !snapshot.logs.length}
                       onClick={() =>
                         confirm(
@@ -1936,12 +2079,13 @@ export default function App() {
                 />
                 <div className="log-footer">
                   <span>
-                    显示最近 {Math.min(activeLogs.length, 200)} 条 ·
-                    导出包含全部筛选记录
+                    {t("显示最近 ")}
+                    {Math.min(activeLogs.length, 200)}
+                    {t(" 条 · 导出包含全部筛选记录")}
                   </span>
                   <span>
                     <LockKeyhole size={12} />
-                    敏感数据已隐藏
+                    {t("敏感数据已隐藏")}
                   </span>
                 </div>
               </Section>
@@ -1949,12 +2093,12 @@ export default function App() {
             {page === "appearance" && (
               <>
                 <Section
-                  title="主题"
+                  title={t("主题")}
                   icon={<Palette size={16} />}
                   className="tool-panel appearance-themes"
                   meta={
                     <span className="section-meta">
-                      {THEMES.find((t) => t.id === prefs.theme)?.name}
+                      {t(THEMES.find((t) => t.id === prefs.theme)?.name)}
                     </span>
                   }
                 >
@@ -1962,7 +2106,7 @@ export default function App() {
                     {THEMES.map(({ id, name, icon: Icon }) => (
                       <button
                         key={id}
-                        aria-label={name}
+                        aria-label={t(name)}
                         aria-pressed={prefs.theme === id}
                         className={`theme-option ${prefs.theme === id ? "selected" : ""}`}
                         onClick={() => setPrefs((p) => selectTheme(p, id))}
@@ -1989,32 +2133,32 @@ export default function App() {
                         </div>
                         <div className="theme-name">
                           <Icon size={17} />
-                          <span>{name}</span>
+                          <span>{t(name)}</span>
                           {prefs.theme === id && <CheckCircle2 size={18} />}
                         </div>
                         <p className="theme-description">
-                          {
+                          {t(
                             {
                               light: "暖纸与琥珀，留住每次发现",
                               graphite: "深青与薄荷，专注夜间观测",
                               forest: "苔绿与浅雾，安静的实验角落",
                               contrast: "清晰边界，鲜明的信号",
-                            }[id]
-                          }
+                            }[id],
+                          )}
                         </p>
                       </button>
                     ))}
                   </div>
                 </Section>
                 <Section
-                  title="显示偏好"
+                  title={t("显示偏好")}
                   icon={<SlidersHorizontal size={16} />}
                   className="tool-panel appearance-preferences"
                 >
                   <div className="setting-row">
                     <div>
-                      <h3>界面密度</h3>
-                      <p>调整控件与内容的间距</p>
+                      <h3>{t("界面密度")}</h3>
+                      <p>{t("调整控件与内容的间距")}</p>
                     </div>
                     <div className="segmented">
                       <button
@@ -2026,7 +2170,7 @@ export default function App() {
                           setPrefs((p) => ({ ...p, density: "comfortable" }))
                         }
                       >
-                        舒适
+                        {t("舒适")}
                       </button>
                       <button
                         aria-pressed={prefs.density === "compact"}
@@ -2035,17 +2179,17 @@ export default function App() {
                           setPrefs((p) => ({ ...p, density: "compact" }))
                         }
                       >
-                        紧凑
+                        {t("紧凑")}
                       </button>
                     </div>
                   </div>
                   <div className="setting-row">
                     <div>
-                      <h3>动态效果</h3>
-                      <p>设置界面过渡与彩蛋动画</p>
+                      <h3>{t("动态效果")}</h3>
+                      <p>{t("设置界面过渡与彩蛋动画")}</p>
                     </div>
                     <select
-                      aria-label="动态效果"
+                      aria-label={t("动态效果")}
                       value={prefs.motion}
                       onChange={(e) =>
                         setPrefs((p) => ({
@@ -2054,9 +2198,9 @@ export default function App() {
                         }))
                       }
                     >
-                      <option value="system">跟随系统</option>
-                      <option value="full">完整动画</option>
-                      <option value="reduced">减少动态效果</option>
+                      <option value="system">{t("跟随系统")}</option>
+                      <option value="full">{t("完整动画")}</option>
+                      <option value="reduced">{t("减少动态效果")}</option>
                     </select>
                   </div>
                 </Section>
@@ -2064,9 +2208,18 @@ export default function App() {
                   <div className="brand-symbol">
                     <img src={appIcon} alt="" width="41" height="41" />
                   </div>
-                  <div>
-                    <strong>果蝇1号 · DF-01</strong>
-                    <span>微小感知，清晰可见 · 1.0.0</span>
+                  <div className="about-product">
+                    <strong>
+                      {t(cockroach ? "偷油婆一号" : "果蝇1号 · DF-01")}
+                    </strong>
+                    <span>{t("微小感知，清晰可见 · 1.1.1")}</span>
+                  </div>
+                  <div className="about-contact">
+                    <span className="author-credit">
+                      {t("作者")}：Mzee ·{" "}
+                      <span lang="zh-CN">上海玖驱科技有限公司</span>
+                    </span>
+                    <span>xiemaths@outlook.com</span>
                   </div>
                 </div>
               </>
@@ -2086,8 +2239,8 @@ export default function App() {
               <CheckCircle2 size={19} />
             )}
           </span>
-          <p>{notice.message}</p>
-          <IconButton label="关闭提示" onClick={() => setNotice(null)}>
+          <p>{t(notice.message)}</p>
+          <IconButton label={t("关闭提示")} onClick={() => setNotice(null)}>
             <X size={16} />
           </IconButton>
         </div>
@@ -2108,19 +2261,20 @@ function LogTable({
   logs: LogEntry[];
   onCopy: (value: string) => void;
 }) {
+  useLanguage();
   if (!logs.length)
-    return <Empty icon={<Terminal size={30} />} title="暂无通信记录" />;
+    return <Empty icon={<Terminal size={30} />} title={t("暂无通信记录")} />;
   return (
     <div className="log-table-wrap">
       <table className="log-table">
         <thead>
           <tr>
-            <th>时间</th>
-            <th>方向</th>
-            <th>报文 / 事件</th>
-            <th>状态</th>
+            <th>{t("时间")}</th>
+            <th>{t("方向")}</th>
+            <th>{t("报文 / 事件")}</th>
+            <th>{t("状态")}</th>
             <th>
-              <span className="sr-only">操作</span>
+              <span className="sr-only">{t("操作")}</span>
             </th>
           </tr>
         </thead>
@@ -2147,7 +2301,7 @@ function LogTable({
                 {log.hex && (
                   <small>
                     {log.command !== null
-                      ? (COMMAND_NAMES[log.command & 0x7f] ?? "设备上报")
+                      ? (t(COMMAND_NAMES[log.command & 0x7f]) ?? t("设备上报"))
                       : log.message}
                   </small>
                 )}
@@ -2155,19 +2309,19 @@ function LogTable({
               <td>
                 <span className={`log-state ${log.level}`}>
                   {log.level === "error"
-                    ? "错误"
+                    ? t("错误")
                     : log.level === "warning"
-                      ? "注意"
+                      ? t("注意")
                       : log.level === "success"
-                        ? "成功"
+                        ? t("成功")
                         : log.direction === "tx"
-                          ? "已发送"
-                          : "记录"}
+                          ? t("已发送")
+                          : t("记录")}
                 </span>
               </td>
               <td>
                 <IconButton
-                  label="复制报文"
+                  label={t("复制报文")}
                   onClick={() => onCopy(log.hex || log.message)}
                 >
                   <Copy size={14} />

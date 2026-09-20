@@ -79,7 +79,7 @@ test("unified settings retain key loading, independent device saves, and log con
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "连接设备", exact: true }).click();
-  await expect(page.locator(".rf-control")).toContainText("已保存 33 dB");
+  await expect(page.locator(".rf-control")).toContainText("已保存 48 dB");
   const nav = page.getByRole("navigation", { name: "主导航" });
   await nav.getByRole("button", { name: "密钥管理", exact: true }).click();
   await page.getByLabel("Key A", { exact: true }).fill("FF FF FF FF FF FF");

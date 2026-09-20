@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, FileText, Folder, X } from "lucide-react";
 import { Button, IconButton } from "./ui";
@@ -17,6 +18,7 @@ export function LogExportDialog({
   value: LogExport;
   onClose: () => void;
 }) {
+  useLanguage();
   const ref = useRef<HTMLDialogElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const savingRef = useRef(false);
@@ -84,10 +86,19 @@ export function LogExportDialog({
       <header className="log-export-heading">
         {saved ? <CheckCircle2 size={22} /> : <Download size={22} />}
         <div>
-          <h2 id="log-export-title">{saved ? "日志已导出" : "导出通信日志"}</h2>
-          <p>{value.count} 条记录 · UTF-8 · .log</p>
+          <h2 id="log-export-title">
+            {saved ? t("日志已导出") : t("导出通信日志")}
+          </h2>
+          <p>
+            {value.count}
+            {t(" 条记录 · UTF-8 · .log")}
+          </p>
         </div>
-        <IconButton label="关闭日志导出" onClick={onClose} disabled={saving}>
+        <IconButton
+          label={t("关闭日志导出")}
+          onClick={onClose}
+          disabled={saving}
+        >
           <X size={18} />
         </IconButton>
       </header>
@@ -95,12 +106,14 @@ export function LogExportDialog({
         <>
           <div className="log-export-success" role="status">
             <FileText size={26} />
-            <strong>{saved.path ? "文件已保存" : "已交给浏览器下载"}</strong>
+            <strong>
+              {saved.path ? t("文件已保存") : t("已交给浏览器下载")}
+            </strong>
             <p>{saved.path ?? saved.filename}</p>
           </div>
           <footer className="log-export-actions">
             <Button variant="primary" onClick={onClose} autoFocus>
-              完成
+              {t("完成")}
             </Button>
           </footer>
         </>
@@ -113,7 +126,7 @@ export function LogExportDialog({
         >
           <div className="log-export-body">
             <label className="field" htmlFor="log-export-name">
-              <span id="log-export-name-label">文件名</span>
+              <span id="log-export-name-label">{t("文件名")}</span>
               <div className="log-export-filename">
                 <input
                   id="log-export-name"
@@ -131,23 +144,32 @@ export function LogExportDialog({
             <div className="log-export-location">
               <Folder size={16} />
               <div>
-                <span>保存位置</span>
-                <p>{directory || "正在获取下载目录…"}</p>
+                <span>{t("保存位置")}</span>
+                <p>
+                  {directory === "浏览器设置的下载目录"
+                    ? t(directory)
+                    : directory || t("正在获取下载目录…")}
+                </p>
               </div>
             </div>
             <div className="log-export-scope">
-              <span>导出范围</span>
-              <p>{value.scope}</p>
-              <small>保存当前筛选结果的快照；重名文件会自动编号。</small>
+              <span>{t("导出范围")}</span>
+              <p>
+                {value.scope
+                  .split(" · ")
+                  .map((part) => t(part))
+                  .join(" · ")}
+              </p>
+              <small>{t("保存当前筛选结果的快照；重名文件会自动编号。")}</small>
             </div>
             <div className="log-export-preview">
-              <span>内容预览</span>
-              <pre tabIndex={0} aria-label="日志内容预览">
+              <span>{t("内容预览")}</span>
+              <pre tabIndex={0} aria-label={t("日志内容预览")}>
                 {value.text.split("\r\n").slice(0, 24).join("\n")}
               </pre>
               <small>
-                预览前 24 行，文件包含全部 {value.count}{" "}
-                条记录。敏感数据已隐藏。
+                {t("预览前 24 行，文件包含全部 ")}
+                {value.count} {t("条记录。敏感数据已隐藏。")}
               </small>
             </div>
             {error && (
@@ -156,20 +178,20 @@ export function LogExportDialog({
                 id="log-export-error"
                 role="alert"
               >
-                {error}
+                {t(error)}
               </p>
             )}
           </div>
           <footer className="log-export-actions">
             <Button type="button" onClick={onClose} disabled={saving}>
-              取消
+              {t("取消")}
             </Button>
             {!directory && error ? (
               <Button
                 type="button"
                 onClick={() => setAttempt((value) => value + 1)}
               >
-                重新获取保存位置
+                {t("重新获取保存位置")}
               </Button>
             ) : (
               <Button
@@ -179,7 +201,7 @@ export function LogExportDialog({
                 disabled={!directory || !name.trim()}
               >
                 <Download size={16} />
-                保存日志
+                {t("保存日志")}
               </Button>
             )}
           </footer>

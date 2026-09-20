@@ -7,6 +7,7 @@ export interface Connection {
   profile: "current" | "full";
 }
 export interface ConnectConfig {
+  simulationProductMode?: 0 | 1;
   port: string;
   baudRate: number;
   address: number;
@@ -43,6 +44,10 @@ export interface DeviceConfiguration {
   keyB: number[];
   resetMs: number;
   antennaGain: number;
+  productMode?: number | null;
+  rampMs?: number | null;
+  startupDelayMs?: number | null;
+  initialDutyPercent?: number | null;
 }
 export interface Snapshot {
   connection: Connection;
@@ -72,6 +77,7 @@ export interface CommandResult {
 export interface Port {
   name: string;
   kind: string;
+  description?: string | null;
 }
 export interface Preview {
   hex: string;
@@ -107,4 +113,6 @@ export const COMMAND_NAMES: Record<number, string> = {
   0x2f: "设置防重读时长",
   0x30: "设置天线增益",
   0x31: "读取全部配置",
+  0x32: "设置启动时序",
+  0x33: "设置初始占空比",
 };

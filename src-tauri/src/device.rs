@@ -39,6 +39,8 @@ pub struct Config {
     pub address: u8,
     pub timeout_ms: u64,
     pub simulation: bool,
+    #[serde(default)]
+    pub simulation_product_mode: u8,
     #[serde(default = "default_profile")]
     pub profile: String,
 }
@@ -58,6 +60,7 @@ pub struct Connection {
 pub struct PortInfo {
     pub name: String,
     pub kind: String,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -127,6 +130,10 @@ pub struct DeviceConfiguration {
     pub key_b: Vec<u8>,
     pub reset_ms: u16,
     pub antenna_gain: u8,
+    pub product_mode: Option<u8>,
+    pub ramp_ms: Option<u16>,
+    pub startup_delay_ms: Option<u16>,
+    pub initial_duty_percent: Option<u8>,
 }
 impl Default for DeviceConfiguration {
     fn default() -> Self {
@@ -134,12 +141,16 @@ impl Default for DeviceConfiguration {
             module_id: 0,
             baud_rate: 115200,
             auto_mode: 0,
-            auto_block: 1,
-            auto_initial_value: vec![0, 0, 0, 1],
+            auto_block: 4,
+            auto_initial_value: vec![1, 0, 0, 0],
             key_a: vec![255; 6],
             key_b: vec![255; 6],
             reset_ms: 0,
-            antenna_gain: 4,
+            antenna_gain: 7,
+            product_mode: Some(0),
+            ramp_ms: Some(2500),
+            startup_delay_ms: Some(1000),
+            initial_duty_percent: Some(60),
         }
     }
 }
@@ -262,13 +273,14 @@ pub fn list_ports() -> Result<Vec<PortInfo>, AppError> {
         .into_iter()
         .map(|p| PortInfo {
             name: p.port_name,
+            description: match &p.port_type {
+                serialport::SerialPortType::UsbPort(info) => info.product.clone(),
+                _ => None,
+            },
             kind: match p.port_type {
-                serialport::SerialPortType::UsbPort(info) => format!(
-                    "USB {:04X}:{:04X}{}",
-                    info.vid,
-                    info.pid,
-                    info.product.map(|s| format!(" · {s}")).unwrap_or_default()
-                ),
+                serialport::SerialPortType::UsbPort(info) => {
+                    format!("USB {:04X}:{:04X}", info.vid, info.pid,)
+                }
                 serialport::SerialPortType::BluetoothPort => "Bluetooth".into(),
                 serialport::SerialPortType::PciPort => "PCI".into(),
                 serialport::SerialPortType::Unknown => "Serial".into(),
@@ -281,6 +293,12 @@ pub fn list_ports() -> Result<Vec<PortInfo>, AppError> {
 
 impl Service {
     pub fn connect(&self, config: Config) -> Result<Connection, AppError> {
+        if config.simulation && config.simulation_product_mode > 1 {
+            return Err(AppError::new(
+                "invalid_product",
+                "模拟产品必须为果蝇或偷油婆",
+            ));
+        }
         if !matches!(config.profile.as_str(), "current" | "full") {
             return Err(AppError::new(
                 "invalid_profile",
@@ -308,6 +326,10 @@ impl Service {
         let transport = if config.simulation {
             let mut simulator = Simulator::new();
             simulator.configuration.module_id = config.address;
+            simulator.configuration.product_mode = Some(config.simulation_product_mode);
+            if config.simulation_product_mode == 1 {
+                simulator.configuration.auto_mode = 3;
+            }
             Transport::Simulation(Box::new(simulator))
         } else {
             let port = serialport::new(&config.port, config.baud_rate)
@@ -403,11 +425,18 @@ impl Service {
             join: Some(join),
         });
         drop(worker);
-        let result = self.execute(CommandRequest {
+        let result = match self.execute(CommandRequest {
             command: 0x31,
             parameters: vec![],
             confirmed_write: false,
-        })?;
+        }) {
+            Ok(result) => result,
+            Err(error) => {
+                // A failed initial query must never leave a seemingly ready connection.
+                self.disconnect()?;
+                return Err(error);
+            }
+        };
         if result.status != 0 {
             self.disconnect()?;
             return Err(AppError::new(
@@ -567,18 +596,22 @@ fn validate(request: &CommandRequest) -> Result<(), AppError> {
         }
         0x2B if p.len() == 18 && p[12..] == [0x00, 0x03, 0x08, 0x05, 0x02, 0x07] => (),
         0x2D if p.len() == 4 && p[1..] == [0x37, 0x21, 0x56] => (),
-        0x2E if p.len() == 10 && p[0] <= 2 && p[1] == p[0] + 10 && p[7..] == [0x23, 0x12, 0x54] => {
-        }
+        0x2E if p.len() == 10
+            && p[0] <= 3
+            && p[1] == p[0] + 10
+            && p[7..] == [0x23, 0x12, 0x54]
+            && (p[0] != 3 || (matches!(p[3], 0 | 1 | 3 | 4 | 5) && p[4] <= 1)) => {}
         0x2F if p.len() == 2 && valid_reset(u16::from_le_bytes([p[0], p[1]])) => (),
         0x30 if p.len() == 1 && p[0] <= 7 => (),
         0x31 if p.is_empty() => (),
-        0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 => return Err(invalid()),
-        _ => {
-            return Err(AppError::new(
-                "excluded_operation",
-                "仅允许读卡号、读写块、装载密钥、设置地址、自动方式、防重读、增益和读取配置",
-            ))
+        0x32 if p.len() == 4
+            && (200..=10000).contains(&u16::from_le_bytes([p[0], p[1]]))
+            && (200..=5000).contains(&u16::from_le_bytes([p[2], p[3]])) => {}
+        0x33 if p.len() == 1 && p[0] <= 100 => (),
+        0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 => {
+            return Err(invalid())
         }
+        _ => return Err(AppError::new("excluded_operation", "该命令不在支持范围内")),
     }
     Ok(())
 }
@@ -696,6 +729,28 @@ fn transact(
     drain_before_send(transport, decoder, core, stop)?;
     let address = {
         let state = lock(core)?;
+        if request.command == 0x33
+            && state
+                .configuration
+                .as_ref()
+                .is_none_or(|c| c.initial_duty_percent.is_none())
+        {
+            return Err(AppError::new(
+                "unsupported_firmware",
+                "当前固件未提供初始占空比，请先读取新版设备配置",
+            ));
+        }
+        if (request.command == 0x32 || (request.command == 0x2e && request.parameters[0] == 3))
+            && state
+                .configuration
+                .as_ref()
+                .is_none_or(|c| !matches!(c.product_mode, Some(0 | 1)))
+        {
+            return Err(AppError::new(
+                "unsupported_product",
+                "请先读取支持语音与时序的设备配置",
+            ));
+        }
         // A 91 frame carries no block number, so conflicting automatic reads cannot be attributed safely.
         if request.command == 0x11
             && state.auto_mode == Some(2)
@@ -774,10 +829,16 @@ fn transact(
                 },
                 if mutation {
                     "等待应答超时，设备可能已执行操作。连接已关闭以避免迟到应答误配，请核实设备配置或卡片数据后重新连接；程序未重试"
+                } else if matches!(request.command, 0x10 | 0x11) {
+                    "等待读卡超时：设备可能仍在等卡、认证或等待队列空间，不代表断线。已关闭本次连接以隔离迟到应答；固件没有取消指令，重新连接后旧读卡结果仍可能到达"
                 } else {
                     "等待设备应答超时，连接已关闭以避免迟到应答误配。请检查卡片、地址、波特率和接线后重新连接"
                 },
             ));
+        }
+        if let Transport::Simulation(simulator) = transport {
+            let state = lock(core)?;
+            simulator.poll_manual(state.simulation_card_present, state.simulation_uid)?;
         }
         let frames = read_frames(transport, decoder)
             .map_err(|error| transfer_error(request, error.message))?;
@@ -844,6 +905,12 @@ fn apply_ack(
                 u16::from_le_bytes([request.parameters[0], request.parameters[1]])
         }
         0x30 => configuration.antenna_gain = result.data[1],
+        0x33 => configuration.initial_duty_percent = Some(result.data[1]),
+        0x32 => {
+            configuration.ramp_ms = Some(u16::from_le_bytes([result.data[1], result.data[2]]));
+            configuration.startup_delay_ms =
+                Some(u16::from_le_bytes([result.data[3], result.data[4]]));
+        }
         _ => (),
     }
     Ok(())
@@ -952,7 +1019,7 @@ fn record_frame(
     };
     if !matches!(
         frame.command,
-        0x90 | 0x91 | 0x92 | 0xAB | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1
+        0x90 | 0x91 | 0x92 | 0xAB | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1 | 0xB2 | 0xB3
     ) {
         state.log(
             "system",
@@ -992,11 +1059,16 @@ fn record_frame(
         0x91 => 23,
         0xB0 => 2,
         0xB1 => 27,
+        0xB2 => 5,
+        0xB3 => 2,
         _ => 1,
     };
-    if (status == 0 && frame.parameters.len() != expected)
-        || (status != 0 && frame.parameters.len() != 1 && frame.parameters.len() != expected)
-    {
+    let valid_length = if frame.command == 0xB1 {
+        matches!(frame.parameters.len(), 27 | 31 | 32 | 33)
+    } else {
+        frame.parameters.len() == expected
+    };
+    if !valid_length && (status == 0 || frame.parameters.len() != 1) {
         state.log(
             "system",
             Some(frame.command),
@@ -1016,10 +1088,51 @@ fn record_frame(
         );
         return None;
     }
+    if status == 0 && frame.command == 0xB2 {
+        let p = &frame.parameters;
+        if !(200..=10000).contains(&u16::from_le_bytes([p[1], p[2]]))
+            || !(200..=5000).contains(&u16::from_le_bytes([p[3], p[4]]))
+        {
+            state.log(
+                "system",
+                Some(frame.command),
+                String::new(),
+                "启动时序响应超出范围",
+                "error",
+            );
+            return None;
+        }
+    }
+    if status == 0 && frame.command == 0xB3 && frame.parameters[1] > 100 {
+        state.log(
+            "system",
+            Some(frame.command),
+            String::new(),
+            "初始占空比响应超出范围",
+            "error",
+        );
+        return None;
+    }
     if status == 0 && frame.command == 0xB1 {
         let p = &frame.parameters;
         let reset_ms = u16::from_le_bytes([p[24], p[25]]);
-        if p[1] != frame.address || p[6] > 2 || !valid_reset(reset_ms) || p[26] > 7 {
+        let baud_rate = u32::from_le_bytes(p[2..6].try_into().ok()?);
+        let valid_timing = p.len() < 31
+            || ((200..=10000).contains(&u16::from_le_bytes([p[27], p[28]]))
+                && (200..=5000).contains(&u16::from_le_bytes([p[29], p[30]])));
+        if p[1] != frame.address
+            || !matches!(
+                baud_rate,
+                2400 | 4800 | 9600 | 14400 | 19200 | 28800 | 38400 | 57600 | 115200
+            )
+            || p[6] > 3
+            || (p[6] == 3 && (!matches!(p[8], 0 | 1 | 3 | 4 | 5) || p[9] > 1))
+            || !valid_timing
+            || !valid_reset(reset_ms)
+            || p[26] > 7
+            || p.get(31).is_some_and(|mode| *mode > 1)
+            || p.get(32).is_some_and(|percent| *percent > 100)
+        {
             state.log(
                 "system",
                 Some(frame.command),
@@ -1031,7 +1144,7 @@ fn record_frame(
         }
         state.configuration = Some(DeviceConfiguration {
             module_id: p[1],
-            baud_rate: u32::from_le_bytes(p[2..6].try_into().ok()?),
+            baud_rate,
             auto_mode: p[6],
             auto_block: p[7],
             auto_initial_value: p[8..12].to_vec(),
@@ -1039,6 +1152,10 @@ fn record_frame(
             key_b: p[18..24].to_vec(),
             reset_ms,
             antenna_gain: p[26],
+            product_mode: p.get(31).copied(),
+            ramp_ms: (p.len() >= 31).then(|| u16::from_le_bytes([p[27], p[28]])),
+            startup_delay_ms: (p.len() >= 31).then(|| u16::from_le_bytes([p[29], p[30]])),
+            initial_duty_percent: p.get(32).copied(),
         });
         state.connection.address = p[1];
         state.auto_mode = Some(p[6]);
@@ -1132,6 +1249,8 @@ fn command_name(command: u8) -> &'static str {
         0x2F => "设置防重读时长",
         0x30 => "设置天线增益",
         0x31 => "读取全部配置",
+        0x32 => "设置启动时序",
+        0x33 => "设置初始占空比",
         _ => "未知命令",
     }
 }
@@ -1142,7 +1261,6 @@ fn status_message(status: u8) -> String {
         0xFE => "读写或参数错误，请检查卡片位置、通信与参数".into(),
         0xFD => "密钥或访问权限错误，Key A / Key B 认证失败或卡片拒绝写入".into(),
         0xFC => "设备返回余额状态 0xFC（范围外）".into(),
-        0xFB => "卡片数据块 CRC 校验错误".into(),
         _ => format!("未知设备状态 0x{status:02X}"),
     }
 }
@@ -1154,6 +1272,7 @@ struct Simulator {
     configuration: DeviceConfiguration,
     last_auto_uid: Option<[u8; 4]>,
     reported_at: Instant,
+    pending_manual: Option<Frame>,
 }
 impl Simulator {
     fn new() -> Self {
@@ -1176,11 +1295,20 @@ impl Simulator {
             configuration: DeviceConfiguration::default(),
             last_auto_uid: None,
             reported_at: Instant::now(),
+            pending_manual: None,
         }
     }
     fn respond(&mut self, frame: Frame, present: bool, uid: [u8; 4]) -> Result<(), AppError> {
         if frame.address != self.configuration.module_id {
             return Ok(());
+        }
+        if matches!(frame.command, 0x10 | 0x11) {
+            self.last_auto_uid = None;
+            self.pending_manual = None;
+            if !present || (frame.command == 0x11 && frame.parameters[0] > 63) {
+                self.pending_manual = Some(frame);
+                return Ok(());
+            }
         }
         let mut parameters = vec![0];
         let card_index = usize::from(uid != [0xE0, 0x45, 0xAF, 0xAB]);
@@ -1204,9 +1332,9 @@ impl Simulator {
                     self.blocks[card_index][frame.parameters[0] as usize]
                         .copy_from_slice(&frame.parameters[1..]);
                 }
-                if matches!(frame.command, 0x10 | 0x11) && self.last_auto_uid == Some(uid) {
-                    self.last_auto_uid = None;
-                }
+            }
+            if frame.command == 0x12 && parameters[0] != 0 {
+                parameters.resize(7, 0);
             }
         }
         if frame.command == 0x2E {
@@ -1241,6 +1369,25 @@ impl Simulator {
             parameters.extend(&c.key_b);
             parameters.extend(c.reset_ms.to_le_bytes());
             parameters.push(c.antenna_gain);
+            parameters.extend(c.ramp_ms.unwrap_or(2500).to_le_bytes());
+            parameters.extend(c.startup_delay_ms.unwrap_or(1000).to_le_bytes());
+            parameters.push(c.product_mode.unwrap_or(0));
+            parameters.push(c.initial_duty_percent.unwrap_or(60));
+        }
+        if frame.command == 0x32 {
+            self.configuration.ramp_ms = Some(u16::from_le_bytes([
+                frame.parameters[0],
+                frame.parameters[1],
+            ]));
+            self.configuration.startup_delay_ms = Some(u16::from_le_bytes([
+                frame.parameters[2],
+                frame.parameters[3],
+            ]));
+            parameters.extend(&frame.parameters);
+        }
+        if frame.command == 0x33 {
+            self.configuration.initial_duty_percent = Some(frame.parameters[0]);
+            parameters.push(frame.parameters[0]);
         }
         self.response.extend(
             encode(&Frame {
@@ -1253,7 +1400,20 @@ impl Simulator {
         self.ready_at = Instant::now() + Duration::from_millis(35);
         Ok(())
     }
+    fn poll_manual(&mut self, present: bool, uid: [u8; 4]) -> Result<(), AppError> {
+        if let Some(frame) = self.pending_manual.take() {
+            if !present || (frame.command == 0x11 && frame.parameters[0] > 63) {
+                self.pending_manual = Some(frame);
+            } else {
+                let last_auto_uid = self.last_auto_uid;
+                self.respond(frame, present, uid)?;
+                self.last_auto_uid = last_auto_uid;
+            }
+        }
+        Ok(())
+    }
     fn tick(&mut self, present: bool, uid: [u8; 4], address: u8) -> Result<(), AppError> {
+        self.poll_manual(present, uid)?;
         if self.configuration.reset_ms > 0
             && self.reported_at.elapsed()
                 >= Duration::from_millis(u64::from(self.configuration.reset_ms))
@@ -1261,7 +1421,7 @@ impl Simulator {
             self.last_auto_uid = None;
         }
         if !present
-            || self.configuration.auto_mode == 1
+            || !matches!(self.configuration.auto_mode, 0 | 2)
             || self.last_auto_uid == Some(uid)
             || !self.response.is_empty()
             || (self.configuration.auto_mode == 2 && self.configuration.auto_block > 63)
@@ -1273,6 +1433,7 @@ impl Simulator {
         } else {
             0x11
         };
+        let pending_manual = self.pending_manual.take();
         self.respond(
             Frame {
                 address,
@@ -1286,6 +1447,7 @@ impl Simulator {
             true,
             uid,
         )?;
+        self.pending_manual = pending_manual;
         self.last_auto_uid = Some(uid);
         self.reported_at = Instant::now();
         Ok(())
@@ -1325,6 +1487,7 @@ mod tests {
                 address: 0,
                 timeout_ms: 1000,
                 simulation: true,
+                simulation_product_mode: 0,
                 profile: "current".into(),
             })
             .unwrap();
@@ -1335,7 +1498,7 @@ mod tests {
         for command in 0..=255 {
             if !matches!(
                 command,
-                0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31
+                0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33
             ) {
                 assert_eq!(
                     validate(&request(command, vec![])).unwrap_err().code,
@@ -1355,6 +1518,8 @@ mod tests {
         req.parameters[6] = 0;
         req.parameters[0] = 3;
         req.parameters[1] = 13;
+        assert!(validate(&req).is_ok());
+        req.parameters[3] = 2;
         assert_eq!(validate(&req).unwrap_err().code, "invalid_parameters");
     }
     #[test]
@@ -1392,6 +1557,64 @@ mod tests {
         }
     }
     #[test]
+    fn both_products_save_voice_and_timing_without_changing_product_mode() {
+        let service = Service::default();
+        let mut config = Config {
+            port: String::new(),
+            baud_rate: 115200,
+            address: 0,
+            timeout_ms: 1000,
+            simulation: true,
+            simulation_product_mode: 1,
+            profile: "current".into(),
+        };
+        service.connect(config.clone()).unwrap();
+        let saved = service.snapshot().unwrap().configuration.unwrap();
+        assert_eq!(saved.product_mode, Some(1));
+        assert_eq!(saved.auto_mode, 3);
+        service
+            .execute(request(0x32, vec![0xd0, 7, 0xf4, 1]))
+            .unwrap();
+        let result = service.execute(request(0x31, vec![])).unwrap();
+        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 1, 60]);
+        config.simulation_product_mode = 0;
+        service.connect(config.clone()).unwrap();
+        assert_eq!(
+            service
+                .snapshot()
+                .unwrap()
+                .configuration
+                .unwrap()
+                .product_mode,
+            Some(0)
+        );
+        service
+            .execute(request(0x32, vec![0xd0, 7, 0xf4, 1]))
+            .unwrap();
+        service
+            .execute(request(0x2e, vec![3, 13, 8, 5, 1, 9, 8, 0x23, 0x12, 0x54]))
+            .unwrap();
+        let result = service.execute(request(0x31, vec![])).unwrap();
+        assert_eq!(&result.data[6..12], &[3, 8, 5, 1, 9, 8]);
+        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 0, 60]);
+        for percent in [0, 60, 100] {
+            assert_eq!(
+                service.execute(request(0x33, vec![percent])).unwrap().data,
+                vec![0, percent]
+            );
+            assert_eq!(
+                service.execute(request(0x31, vec![])).unwrap().data[32],
+                percent
+            );
+        }
+        assert!(validate(&request(0x33, vec![101])).is_err());
+        assert!(validate(&request(0x33, vec![])).is_err());
+        config.simulation_product_mode = 2;
+        assert_eq!(service.connect(config).unwrap_err().code, "invalid_product");
+        service.disconnect().unwrap();
+    }
+
+    #[test]
     fn simulation_roundtrip_write_read_and_no_card() {
         let service = simulator();
         let card = service
@@ -1412,7 +1635,12 @@ mod tests {
         let result = service.execute(request(0x11, vec![1])).unwrap();
         assert_eq!(result.card.unwrap().data.unwrap(), vec![0x7F; 16]);
         service.set_simulation_card(false).unwrap();
-        assert_eq!(service.execute(request(0x10, vec![])).unwrap().status, 0xFF);
+        thread::scope(|scope| {
+            let pending = scope.spawn(|| service.execute(request(0x10, vec![])));
+            thread::sleep(Duration::from_millis(150));
+            service.set_simulation_card(true).unwrap();
+            assert_eq!(pending.join().unwrap().unwrap().status, 0);
+        });
         service.disconnect().unwrap();
         assert!(!service.snapshot().unwrap().connection.connected);
     }
@@ -1529,6 +1757,7 @@ mod tests {
                 address: 0,
                 timeout_ms: 1000,
                 simulation: false,
+                simulation_product_mode: 0,
                 profile: "current".into(),
             })
             .unwrap_err();

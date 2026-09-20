@@ -76,6 +76,8 @@ export function validateRequest(request: CommandRequest): void {
     47: 2,
     48: 1,
     49: 0,
+    50: 4,
+    51: 1,
   };
   if (p.length !== lengths[command]) throw new Error("命令参数长度不正确");
   if (command === 18 && p[0] > 63) throw new Error("写入块号必须在 0–63 之间");
@@ -92,8 +94,24 @@ export function validateRequest(request: CommandRequest): void {
     hex(p.slice(-fixed[command].length)) !== hex(fixed[command])
   )
     throw new Error("命令确认字节不正确");
-  if (command === 46 && (p[0] > 2 || p[1] !== p[0] + 10))
-    throw new Error("自动方式仅支持 0、1、2，模式校验字节必须为模式 + 0A");
+  if (command === 46 && (p[0] > 3 || p[1] !== p[0] + 10))
+    throw new Error("自动方式仅支持 0、1、2、3，模式校验字节必须为模式 + 0A");
+  if (
+    command === 46 &&
+    p[0] === 3 &&
+    (![0, 1, 3, 4, 5].includes(p[3]) || p[4] > 1)
+  )
+    throw new Error("语音编码或等待参数无效");
+  if (
+    command === 50 &&
+    (p[0] + p[1] * 256 < 200 ||
+      p[0] + p[1] * 256 > 10000 ||
+      p[2] + p[3] * 256 < 200 ||
+      p[2] + p[3] * 256 > 5000)
+  )
+    throw new Error("缓升时间须为 200–10000 ms，启动延时须为 200–5000 ms");
+  if (command === 51 && p[0] > 100)
+    throw new Error("初始占空比须为 0–100% 的整数");
   if (command === 47) {
     const resetMs = p[0] + p[1] * 256;
     if (resetMs !== 0 && (resetMs < 100 || resetMs > 3000))
@@ -114,18 +132,23 @@ let reportedAt = 0;
 let commandActive = false;
 let queue: Promise<void> = Promise.resolve();
 let queueSize = 0;
+let responseTimeoutMs = 1000;
 
 function defaultConfiguration(address: number): DeviceConfiguration {
   return {
     moduleId: address,
     baudRate: 115200,
     autoMode: 0,
-    autoBlock: 1,
-    autoInitialValue: [0, 0, 0, 1],
+    autoBlock: 4,
+    autoInitialValue: [1, 0, 0, 0],
     keyA: Array<number>(6).fill(255),
     keyB: Array<number>(6).fill(255),
     resetMs: 0,
-    antennaGain: 4,
+    antennaGain: 7,
+    productMode: 0,
+    rampMs: 2500,
+    startupDelayMs: 1000,
+    initialDutyPercent: 60,
   };
 }
 let deviceConfiguration = defaultConfiguration(0);
@@ -147,6 +170,12 @@ function configurationBytes(): number[] {
     c.resetMs & 255,
     c.resetMs >> 8,
     c.antennaGain,
+    (c.rampMs ?? 2500) & 255,
+    (c.rampMs ?? 2500) >> 8,
+    (c.startupDelayMs ?? 1000) & 255,
+    (c.startupDelayMs ?? 1000) >> 8,
+    c.productMode ?? 0,
+    c.initialDutyPercent ?? 60,
   ];
 }
 
@@ -209,7 +238,7 @@ function autoReport() {
     !demo.connection.connected ||
     !demo.simulationCardPresent ||
     demo.autoMode === null ||
-    demo.autoMode === 1 ||
+    ![0, 2].includes(demo.autoMode) ||
     reportedUid === demo.simulationUid
   )
     return;
@@ -253,6 +282,8 @@ function requireSimulation() {
 }
 
 function validateConfig(config: ConnectConfig) {
+  if (![0, 1].includes(config.simulationProductMode ?? 0))
+    throw new Error("模拟产品必须为果蝇或偷油婆");
   if (!config.simulation)
     throw new Error("浏览器仅支持模拟设备。请使用桌面应用连接真实串口。");
   if (config.profile !== "current" && config.profile !== "full")
@@ -279,13 +310,23 @@ async function executeLocal(
   if (session !== expectedSession || !demo.connection.connected)
     throw new Error("设备未连接或连接已变更，待处理命令已取消");
   const { command, parameters: p } = request;
+  if (command === 0x33 && demo.configuration?.initialDutyPercent == null)
+    throw new Error("当前固件未提供初始占空比，请先读取新版设备配置");
+  if (
+    (command === 0x32 || (command === 0x2e && p[0] === 3)) &&
+    demo.configuration?.productMode !== 0 &&
+    demo.configuration?.productMode !== 1
+  )
+    throw new Error("请先读取支持语音与时序的设备配置");
   if (command === 0x11 && demo.autoMode === 2 && demo.autoBlock !== p[0])
     throw new Error(
       "自动读块与本次目标不同，请先关闭自动读取再读取此块；命令未发送",
     );
   const address = demo.connection.address;
-  const uid = demo.simulationUid;
-  const present = demo.simulationCardPresent;
+  let uid = demo.simulationUid;
+  let present = demo.simulationCardPresent;
+  const manualRead = command === 0x10 || command === 0x11;
+  if (manualRead) reportedUid = null;
   demo.stats.tx++;
   log({
     direction: "tx",
@@ -300,6 +341,22 @@ async function executeLocal(
   // A disconnected operation must never complete against a newly connected simulator.
   if (session !== expectedSession || !demo.connection.connected)
     throw new Error("连接已关闭，已发送操作的结果未确认");
+  if (manualRead) {
+    const started = Date.now();
+    while (!demo.simulationCardPresent || (command === 0x11 && p[0] > 63)) {
+      if (Date.now() - started >= responseTimeoutMs) {
+        demo.connection.connected = false;
+        throw new Error(
+          "等待读卡超时，设备可能仍在等卡或认证；已关闭本次连接以隔离迟到应答，请重新连接",
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (session !== expectedSession || !demo.connection.connected)
+        throw new Error("连接已关闭，已发送操作的结果未确认");
+    }
+    uid = demo.simulationUid;
+    present = demo.simulationCardPresent;
+  }
   if (
     [0x10, 0x11, 0x12].includes(command) &&
     (!present || (command !== 0x10 && p[0] > 63))
@@ -312,11 +369,17 @@ async function executeLocal(
     log({
       direction: "rx",
       command: command | 0x80,
-      hex: frame(address, command | 0x80, [status]).hex,
+      hex: frame(address, command | 0x80, [status, 0, 0, 0, 0, 0, 0]).hex,
       message,
       level: "warning",
     });
-    return { command, status, data: [status], message, card: null };
+    return {
+      command,
+      status,
+      data: [status, 0, 0, 0, 0, 0, 0],
+      message,
+      card: null,
+    };
   }
   let card: Card | null = null;
   let data = [0];
@@ -326,8 +389,6 @@ async function executeLocal(
     if (command === 0x12) card.block = p[0];
     demo.lastCard = structuredClone(card);
     data = [0, 4, 0, ...parseHex(uid), ...(card.data ?? [])];
-    if ((command === 0x10 || command === 0x11) && reportedUid === uid)
-      reportedUid = null;
   }
   if (command === 0x2b) {
     deviceConfiguration.keyA = p.slice(0, 6);
@@ -349,6 +410,15 @@ async function executeLocal(
     data = [0, p[0]];
   }
   if (command === 0x31) data = configurationBytes();
+  if (command === 0x33) {
+    deviceConfiguration.initialDutyPercent = p[0];
+    data = [0, p[0]];
+  }
+  if (command === 0x32) {
+    deviceConfiguration.rampMs = p[0] + p[1] * 256;
+    deviceConfiguration.startupDelayMs = p[2] + p[3] * 256;
+    data = [0, ...p];
+  }
   demo.stats.rx++;
   log({
     direction: "rx",
@@ -452,6 +522,7 @@ async function local<T>(
   if (name === "connect_device") {
     const config = args!.config!;
     validateConfig(config);
+    responseTimeoutMs = config.timeoutMs;
     session++;
     demo = {
       ...structuredClone(EMPTY_SNAPSHOT),
@@ -468,6 +539,8 @@ async function local<T>(
     };
     memories = new Map(SIMULATION_UIDS.map((uid) => [uid, createMemory()]));
     deviceConfiguration = defaultConfiguration(config.address);
+    deviceConfiguration.productMode = config.simulationProductMode ?? 0;
+    if (deviceConfiguration.productMode === 1) deviceConfiguration.autoMode = 3;
     reportedUid = null;
     log({
       direction: "system",

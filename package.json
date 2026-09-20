@@ -1,6 +1,7 @@
 {
   "name": "df01-studio",
-  "version": "1.0.0",
+  "version": "1.1.1",
+  "author": "Mzee <xiemaths@outlook.com>",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +11,7 @@
     "tauri": "tauri",
     "desktop": "tauri dev",
     "bundle": "tauri build",
+    "build:portable": "tauri build --no-bundle",
     "package:portable": "node scripts/package-portable.mjs",
     "notices": "node scripts/generate-notices.mjs",
     "test": "vitest run",

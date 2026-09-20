@@ -1,3 +1,4 @@
+import { t, useLanguage } from "../lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -10,6 +11,7 @@ export interface WindowControlsProps {
 }
 
 export function WindowControls({ onError }: WindowControlsProps) {
+  useLanguage();
   const native = isTauri();
   const [maximized, setMaximized] = useState(false);
   const [pending, setPending] = useState(false);
@@ -75,10 +77,10 @@ export function WindowControls({ onError }: WindowControlsProps) {
   }
 
   return (
-    <div className="window-controls" role="group" aria-label="窗口控制">
+    <div className="window-controls" role="group" aria-label={t("窗口控制")}>
       <div
         className="window-drag-handle"
-        title="拖动窗口"
+        title={t("拖动窗口")}
         onMouseDown={(event) => {
           if (event.button !== 0) return;
           event.preventDefault();
@@ -90,8 +92,8 @@ export function WindowControls({ onError }: WindowControlsProps) {
       <button
         type="button"
         className="window-control-button"
-        aria-label="最小化窗口"
-        title="最小化窗口"
+        aria-label={t("最小化窗口")}
+        title={t("最小化窗口")}
         disabled={pending}
         onClick={() => void run("minimize")}
       >
@@ -100,8 +102,8 @@ export function WindowControls({ onError }: WindowControlsProps) {
       <button
         type="button"
         className="window-control-button"
-        aria-label={maximized ? "还原窗口" : "最大化窗口"}
-        title={maximized ? "还原窗口" : "最大化窗口"}
+        aria-label={t(maximized ? "还原窗口" : "最大化窗口")}
+        title={t(maximized ? "还原窗口" : "最大化窗口")}
         disabled={pending}
         onClick={() => void run("toggleMaximize")}
       >
@@ -114,8 +116,8 @@ export function WindowControls({ onError }: WindowControlsProps) {
       <button
         type="button"
         className="window-control-button window-close-button"
-        aria-label="关闭窗口"
-        title="关闭窗口"
+        aria-label={t("关闭窗口")}
+        title={t("关闭窗口")}
         disabled={pending}
         onClick={() => void run("close")}
       >
@@ -123,7 +125,7 @@ export function WindowControls({ onError }: WindowControlsProps) {
       </button>
       {error && (
         <div className="window-control-error" role="alert">
-          {error}
+          {t(error)}
         </div>
       )}
     </div>
