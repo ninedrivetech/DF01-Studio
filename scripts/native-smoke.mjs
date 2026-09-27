@@ -20,7 +20,7 @@ assert.ok(['debug', 'release'].includes(configuration), 'Invalid build configura
 const expectedOrigin = configuration === 'release' ? /^(?:https?:\/\/tauri\.localhost|tauri:\/\/localhost)(?:\/|$)/ : /^http:\/\/127\.0\.0\.1:1420\//;
 const artifactName = configuration === 'release' ? 'native-release' : 'native';
 assert.ok(Number.isInteger(port) && port >= 1024 && port <= 65535, 'Invalid CDP port');
-const output = path.join(root, 'docs', 'screenshots');
+const output = path.join(root, 'test-results-native', configuration);
 const report = { runtime: 'tauri-native-webview2', configuration, timestamp: new Date().toISOString(), processId: args.get('--pid') ?? null, checks: [] };
 let browser;
 let page;

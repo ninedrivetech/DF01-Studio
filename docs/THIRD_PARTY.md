@@ -1,6 +1,6 @@
 # 开源组件
 
-本项目使用以下开源组件。具体锁定版本分别保存在 `package-lock.json` 和 `src-tauri/Cargo.lock`，完整许可文本保留在依赖安装目录。
+本项目采用 [Apache License 2.0](../LICENSE)。以下列出主要开源组件，各组件保留其自身许可；完整声明见 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)。具体锁定版本分别保存在 `package-lock.json` 和 `src-tauri/Cargo.lock`，完整许可文本保留在依赖安装目录。
 
 | 组件              | 用途                          | 许可 / 来源                                            |
 | ----------------- | ----------------------------- | ------------------------------------------------------ |
@@ -14,8 +14,6 @@
 | Serde             | Rust 数据序列化               | MIT / Apache-2.0 · https://github.com/serde-rs/serde   |
 | Vite              | 前端开发与构建                | MIT · https://github.com/vitejs/vite                   |
 | TypeScript        | 类型检查                      | Apache-2.0 · https://github.com/microsoft/TypeScript   |
-| Vitest            | 单元测试                      | MIT · https://github.com/vitest-dev/vitest             |
-| Playwright        | 浏览器自动化验证              | Apache-2.0 · https://github.com/microsoft/playwright   |
 | Prettier          | 源代码格式化                  | MIT · https://github.com/prettier/prettier             |
 
 四套主题基于 daisyUI，应用通过 `data-theme` 切换 `corporate`、`business`、`emerald` 和 `black`，并使用自定义色彩及语义变量统一页面。界面图标使用 Lucide React 组件；程序图标源文件为本项目的 `src/assets/df01-icon.svg`，平台 PNG / ICO 由该文件生成。

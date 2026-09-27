@@ -9,7 +9,7 @@ import { rustTarget } from './platform.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { values } = parseArgs({ options: { target: { type: 'string' }, output: { type: 'string' } } });
 const target = rustTarget(values.target);
-const output = values.output ? path.resolve(values.output) : path.join(root, 'THIRD-PARTY-NOTICES.txt');
+const output = values.output ? path.resolve(values.output) : path.join(root, 'docs', 'THIRD-PARTY-NOTICES.txt');
 const json = async filename => JSON.parse(await readFile(filename, 'utf8'));
 const app = await json(path.join(root, 'package.json'));
 const npmLock = await json(path.join(root, 'package-lock.json'));

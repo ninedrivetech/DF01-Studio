@@ -4,6 +4,7 @@ version = "1.1.1"
 description = "Fruitfly No. 1 / DF-01 desktop workstation"
 authors = ["Mzee <xiemaths@outlook.com>"]
 edition = "2021"
+license = "Apache-2.0"
 
 [lib]
 name = "df01_studio_lib"

@@ -110,7 +110,7 @@ async function renderedContrast(locator: Locator) {
 }
 
 async function saveScreenshot(page: Page, testInfo: TestInfo, name: string) {
-  const destination = path.resolve("docs", "screenshots", name);
+  const destination = testInfo.outputPath(name);
   await mkdir(path.dirname(destination), { recursive: true });
   await page.screenshot({
     path: destination,

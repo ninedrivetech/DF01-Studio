@@ -15,9 +15,9 @@
     "package:portable": "node scripts/package-portable.mjs",
     "notices": "node scripts/generate-notices.mjs",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --config docs/playwright.config.ts",
     "test:scripts": "node --test scripts/tests/package-portable.test.mjs",
-    "format": "prettier --write src vite.config.ts vitest.config.ts playwright.config.ts"
+    "format": "prettier --write src vite.config.ts vitest.config.ts docs/playwright.config.ts"
   },
   "dependencies": {
     "@kayahr/text-encoding": "^2.2.0",
@@ -40,5 +40,6 @@
     "typescript": "~5.8.3",
     "vite": "^6.3.0",
     "vitest": "^3.2.0"
-  }
+  },
+  "license": "Apache-2.0"
 }
