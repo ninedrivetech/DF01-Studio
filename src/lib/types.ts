@@ -48,6 +48,7 @@ export interface DeviceConfiguration {
   rampMs?: number | null;
   startupDelayMs?: number | null;
   initialDutyPercent?: number | null;
+  motorDirection?: number | null;
 }
 export interface Snapshot {
   connection: Connection;
@@ -115,4 +116,5 @@ export const COMMAND_NAMES: Record<number, string> = {
   0x31: "读取全部配置",
   0x32: "设置启动时序",
   0x33: "设置初始占空比",
+  0x34: "设置电机上电方向",
 };

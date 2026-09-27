@@ -78,6 +78,7 @@ export function validateRequest(request: CommandRequest): void {
     49: 0,
     50: 4,
     51: 1,
+    52: 1,
   };
   if (p.length !== lengths[command]) throw new Error("命令参数长度不正确");
   if (command === 18 && p[0] > 63) throw new Error("写入块号必须在 0–63 之间");
@@ -112,6 +113,8 @@ export function validateRequest(request: CommandRequest): void {
     throw new Error("缓升时间须为 200–10000 ms，启动延时须为 200–5000 ms");
   if (command === 51 && p[0] > 100)
     throw new Error("初始占空比须为 0–100% 的整数");
+  if (command === 52 && p[0] > 1)
+    throw new Error("电机上电方向必须为 00 或 01");
   if (command === 47) {
     const resetMs = p[0] + p[1] * 256;
     if (resetMs !== 0 && (resetMs < 100 || resetMs > 3000))
@@ -149,6 +152,7 @@ function defaultConfiguration(address: number): DeviceConfiguration {
     rampMs: 2500,
     startupDelayMs: 1000,
     initialDutyPercent: 60,
+    motorDirection: 0,
   };
 }
 let deviceConfiguration = defaultConfiguration(0);
@@ -176,6 +180,7 @@ function configurationBytes(): number[] {
     (c.startupDelayMs ?? 1000) >> 8,
     c.productMode ?? 0,
     c.initialDutyPercent ?? 60,
+    c.motorDirection ?? 0,
   ];
 }
 
@@ -310,6 +315,8 @@ async function executeLocal(
   if (session !== expectedSession || !demo.connection.connected)
     throw new Error("设备未连接或连接已变更，待处理命令已取消");
   const { command, parameters: p } = request;
+  if (command === 0x34 && demo.configuration?.motorDirection == null)
+    throw new Error("当前固件未提供电机上电方向，请先读取新版设备配置");
   if (command === 0x33 && demo.configuration?.initialDutyPercent == null)
     throw new Error("当前固件未提供初始占空比，请先读取新版设备配置");
   if (
@@ -412,6 +419,10 @@ async function executeLocal(
   if (command === 0x31) data = configurationBytes();
   if (command === 0x33) {
     deviceConfiguration.initialDutyPercent = p[0];
+    data = [0, p[0]];
+  }
+  if (command === 0x34) {
+    deviceConfiguration.motorDirection = p[0];
     data = [0, p[0]];
   }
   if (command === 0x32) {

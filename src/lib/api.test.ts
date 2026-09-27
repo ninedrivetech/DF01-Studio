@@ -41,6 +41,24 @@ describe("wire format from the current firmware table", () => {
     [0, 0x30, "07", "7F0400300733"],
     [0, 0xb0, "0007", "7F0500B00007B2"],
     [0, 0x31, "", "7F03003132"],
+    [0, 0x34, "00", "7F0400340030"],
+    [0, 0x34, "01", "7F0400340131"],
+    [0, 0xb4, "0000", "7F0500B40000B1"],
+    [0, 0xb4, "0001", "7F0500B40001B0"],
+    [0, 0xb4, "FE00", "7F0500B4FE004F"],
+    [0, 0xb4, "FE01", "7F0500B4FE014E"],
+    [
+      0,
+      0xb1,
+      "00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 01 3C 00",
+      "7F2500B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007C409E803013C004D",
+    ],
+    [
+      0,
+      0xb1,
+      "00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 00 3C 00",
+      "7F2500B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007C409E803003C004C",
+    ],
     [1, 0xad, "00", "7F0401AD00A8"],
     [
       0,
@@ -315,7 +333,7 @@ describe("browser simulator workflows", () => {
     await api.execute(request(0x2f, [0xe8, 3]));
     await api.execute(request(0x30, [7]));
     const result = await api.execute(request(0x31));
-    expect(result.data).toHaveLength(33);
+    expect(result.data).toHaveLength(34);
     expect(result.data.slice(24, 27)).toEqual([0xe8, 3, 7]);
     expect(result.data[31]).toBe(0);
     expect((await api.snapshot()).configuration).toMatchObject({
@@ -476,6 +494,38 @@ describe("browser simulator workflows", () => {
     expect(() => validateRequest(request(0x33, [101]))).toThrow();
     expect(() => validateRequest(request(0x33, []))).toThrow();
     expect(frame(0, 0x33, [60]).hex).toBe("7F 04 00 33 3C 0B");
+  });
+
+  it("saves startup direction for both products and rejects invalid requests without sending", async () => {
+    for (const simulationProductMode of [0, 1] as const) {
+      await api.connect({ ...config, simulationProductMode });
+      expect((await api.snapshot()).configuration?.motorDirection).toBe(0);
+      for (const direction of [1, 1, 0]) {
+        expect((await api.execute(request(0x34, [direction]))).data).toEqual([
+          0,
+          direction,
+        ]);
+        const saved = (await api.snapshot()).configuration!;
+        expect(saved).toMatchObject({
+          motorDirection: direction,
+          productMode: simulationProductMode,
+          rampMs: 2500,
+          startupDelayMs: 1000,
+          initialDutyPercent: 60,
+        });
+        expect((await api.execute(request(0x31))).data[33]).toBe(direction);
+      }
+      const before = await api.snapshot();
+      for (const parameters of [[], [2], [255], [0, 1], [-1], [0.5]]) {
+        await expect(api.execute(request(0x34, parameters))).rejects.toThrow();
+      }
+      const after = await api.snapshot();
+      expect(after.stats.tx).toBe(before.stats.tx);
+      expect(after.configuration?.motorDirection).toBe(0);
+      expect(after.logs.filter((log) => log.command === 0xb4).at(-1)?.hex).toBe(
+        "7F 05 00 B4 00 00 B1",
+      );
+    }
   });
 
   it("releases automatic dedup after reset duration or reapplying the same automatic mode", async () => {

@@ -23,6 +23,20 @@ const logs: LogEntry[] = [
   },
 ];
 describe("log search", () => {
+  it("finds direction acknowledgements by translated command name", () => {
+    const direction: LogEntry = {
+      ...logs[0],
+      command: 0xb4,
+      hex: "7F 05 00 B4 00 01 B0",
+      message: "操作成功",
+    };
+    expect(filterLogs([direction], "rx", "motor direction", "en")).toEqual([
+      direction,
+    ]);
+    expect(filterLogs([direction], "rx", "设置电机上电方向", "zh-CN")).toEqual([
+      direction,
+    ]);
+  });
   it("matches translated response labels and preserves the source entries", () => {
     const before = structuredClone(logs);
     expect(filterLogs(logs, "all", "  read all settings  ", "en")).toEqual([

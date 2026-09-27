@@ -432,6 +432,8 @@ fn configuration_versions_accept_new_mode_without_enabling_unsupported_commands(
         (vec![0xe8, 3, 0xc8, 0, 0], Some(0)),
         (vec![0xe8, 3, 0xc8, 0, 1], Some(1)),
         (vec![0xc4, 9, 0xe8, 3, 1, 60], Some(1)),
+        (vec![0xc4, 9, 0xe8, 3, 0, 60, 0], Some(0)),
+        (vec![0xc4, 9, 0xe8, 3, 1, 60, 1], Some(1)),
     ] {
         let core = Mutex::new(Core::default());
         let mut parameters = base.clone();
@@ -448,12 +450,13 @@ fn configuration_versions_accept_new_mode_without_enabling_unsupported_commands(
         let saved = state.configuration.as_ref().unwrap();
         assert_eq!(saved.product_mode, product_mode);
         assert_eq!(saved.initial_duty_percent, parameters.get(32).copied());
+        assert_eq!(saved.motor_direction, parameters.get(33).copied());
         assert_eq!(saved.auto_mode, 3);
         assert_eq!(saved.auto_block, 4);
         assert_eq!(saved.key_a, vec![255; 6]);
         assert!(state.logs.iter().all(|log| !log.hex.contains("FF FF")));
     }
-    for length in [28, 29, 30, 34] {
+    for length in [28, 29, 30, 35] {
         let mut parameters = base.clone();
         parameters.resize(length, 0);
         let core = Mutex::new(Core::default());
@@ -589,6 +592,91 @@ fn duty_ack_validates_success_and_preserves_configuration_on_failure() {
 }
 
 #[test]
+fn direction_ack_uses_saved_value_and_rejects_malformed_responses() {
+    let core = Mutex::new(Core {
+        configuration: Some(DeviceConfiguration::default()),
+        ..Core::default()
+    });
+    let req = request(0x34, vec![0]);
+    for (reply, expected) in [(vec![0, 1], 1), (vec![0xfe, 0], 1), (vec![0, 0], 0)] {
+        let status = reply[0];
+        let (mut transport, _) = mock_transport(response(0, 0xb4, &reply), 1);
+        assert_eq!(
+            transaction(&mut transport, &mut Decoder::default(), &core, &req)
+                .unwrap()
+                .status,
+            status
+        );
+        assert_eq!(
+            core.lock()
+                .unwrap()
+                .configuration
+                .as_ref()
+                .unwrap()
+                .motor_direction,
+            Some(expected)
+        );
+    }
+    for parameters in [
+        vec![],
+        vec![0],
+        vec![0xfe],
+        vec![0, 2],
+        vec![0xfe, 2],
+        vec![0, 1, 0],
+    ] {
+        assert!(record_frame(
+            &core,
+            Ok(Frame {
+                address: 0,
+                command: 0xb4,
+                parameters
+            }),
+            Some(&req)
+        )
+        .is_none());
+        assert_eq!(
+            core.lock()
+                .unwrap()
+                .configuration
+                .as_ref()
+                .unwrap()
+                .motor_direction,
+            Some(0)
+        );
+    }
+    assert!(core
+        .lock()
+        .unwrap()
+        .logs
+        .iter()
+        .any(|log| log.message.contains("设置电机上电方向")));
+}
+
+#[test]
+fn direction_requires_v15_readback_before_sending() {
+    let core = Mutex::new(Core::default());
+    let req = request(0x34, vec![1]);
+    for configuration in [
+        None,
+        Some(DeviceConfiguration {
+            motor_direction: None,
+            ..DeviceConfiguration::default()
+        }),
+    ] {
+        core.lock().unwrap().configuration = configuration;
+        let (mut transport, port) = mock_transport(response(0, 0xb4, &[0, 1]), 1);
+        assert_eq!(
+            transaction(&mut transport, &mut Decoder::default(), &core, &req)
+                .unwrap_err()
+                .code,
+            "unsupported_firmware"
+        );
+        assert!(port.lock().unwrap().writes.is_empty());
+    }
+}
+
+#[test]
 fn startup_settings_require_product_readback_and_a_valid_success_ack() {
     let req = request(0x32, vec![0xe8, 3, 0xc8, 0]);
     let core = Mutex::new(Core::default());
@@ -643,7 +731,7 @@ fn startup_settings_require_product_readback_and_a_valid_success_ack() {
 fn malformed_extended_configuration_never_replaces_saved_values() {
     let parameters = vec![
         0, 0, 0, 0xc2, 1, 0, 3, 4, 1, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-        255, 255, 0, 0, 7, 0xc4, 9, 0xe8, 3, 1, 60,
+        255, 255, 0, 0, 7, 0xc4, 9, 0xe8, 3, 1, 60, 0,
     ];
     let core = Mutex::new(Core::default());
     assert!(record_frame(
@@ -665,6 +753,7 @@ fn malformed_extended_configuration_never_replaces_saved_values() {
         (30, 255),
         (31, 2),
         (32, 101),
+        (33, 2),
     ] {
         let mut invalid = parameters.clone();
         invalid[offset] = value;
@@ -692,6 +781,7 @@ fn malformed_extended_configuration_never_replaces_saved_values() {
         let saved = state.configuration.as_ref().unwrap();
         assert_eq!(saved.ramp_ms, Some(2500));
         assert_eq!(saved.initial_duty_percent, Some(60));
+        assert_eq!(saved.motor_direction, Some(0));
         assert_eq!(saved.auto_initial_value, vec![1, 0, 0, 0]);
     }
     // Reserved auto_value bytes remain opaque in non-voice modes.

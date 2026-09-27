@@ -18,6 +18,9 @@ describe("interface language", () => {
   it("translates labels and interpolated application feedback", () => {
     expect(translate("读卡工作台", "en")).toBe("Reader Workbench");
     expect(translate("读取数据块成功", "en")).toBe("Read data block succeeded");
+    expect(translate("设置电机上电方向成功", "en")).toBe(
+      "Set startup motor direction succeeded",
+    );
     expect(translate("请输入 0–255 的整数", "en")).toBe(
       "Enter an integer from 0 to 255",
     );

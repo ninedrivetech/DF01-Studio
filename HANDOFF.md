@@ -1,18 +1,20 @@
 # 果蝇1号 · DF-01 开发交接
 
-更新时间：2026-09-21，Asia/Shanghai。版本：1.1.1。
+更新时间：2026-09-27，Asia/Shanghai。版本：1.1.1。
 
 ## 当前交付
 
 - Windows x64 仅交付便携版：`release/DF-01-1.1.1-portable.zip`。校验值以同目录 `SHA256SUMS.txt` 为准。解压运行 `df01-studio.exe`，需要 WebView2 Runtime。
 - 作者 Mzee，邮箱 xiemaths@outlook.com，公司上海玖驱科技有限公司。关于区域左侧显示软件与版本，右侧显示作者与联系方式，窄屏自动上下排列。
-- 权威协议为 `docs/指令和参数表.md`（Flash v14）。支持旧版配置回包及 v14 语音、启动时序、初始占空比；果蝇不显示或进入偷油婆扩展页。
-- 偷油婆电机正反转仅为前端预选，离页清空，不发送命令、不改变保存配置。后续接入须以用户补充的协议为依据。
+- 权威协议为 `docs/指令和参数表.md`（Flash v15）。支持旧版配置回包及语音、启动时序、初始占空比、上电方向；果蝇不显示或进入偷油婆扩展页。
+- 2026-09-27 重打包保留 1.1.1 版本，已接入 `34/B4` 电机上电方向及 `B1` 偏移33的 `motorDirection`，前端独立保存，成功回包后同步配置，下次上电或复位生效。界面不显示 GPIO 名称；旧固件缺少方向字段时禁用，Rust 和浏览器模拟器均支持 v15。
 - 中英文切换保留连接和草稿；四主题、双密度及 900×640 最小窗口已验证。两处通信列表共用日志筛选，支持搜索中英文命令名并保留原始报文。
 
 ## 验证证据
 
-前端单元测试 134 项、Rust 测试 45 项、打包脚本测试 7 项通过；严格 Clippy、TypeScript / Vite 和 Windows Release 构建通过。
+2026-09-27 v15：前端单元测试 144 项、Rust 测试 48 项、相关浏览器回归 16 项、原生 Debug 和 Release WebView2 各 29 项通过；严格 Clippy、格式检查、TypeScript / Vite、Windows Debug 和 Release 构建通过。重新打包前 7 项打包脚本测试通过，依赖许可重新生成。详见 `docs/VERIFICATION.md`，最终原生记录为 `docs/screenshots/native-release-smoke.json`。
+
+以下为此前 1.1.1 发布验证：前端单元测试 134 项、Rust 测试 45 项、打包脚本测试 7 项通过；严格 Clippy、TypeScript / Vite 和 Windows Release 构建通过。
 
 浏览器覆盖 78 个场景，完整运行中 1 项受到开发服务器重载影响，相关 9 项随后全部复测通过。关于布局调整后另有 14 项界面回归通过。最新原生 WebView2 29 项检查通过，报告见 `docs/screenshots/native-release-smoke.json`，截图为 `native-release-*.png`。
 

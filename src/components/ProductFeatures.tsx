@@ -6,6 +6,7 @@ import {
   CircleHelp,
   RotateCw,
   RotateCcw,
+  Save,
 } from "lucide-react";
 import { Button, Field, Section } from "./ui";
 import { NumberInput } from "./NumberInput";
@@ -56,10 +57,11 @@ export function ProductFeatures({
   const [ramp, setRamp] = useState(saved.rampMs ?? 2500);
   const [delay, setDelay] = useState(saved.startupDelayMs ?? 1000);
   const [duty, setDuty] = useState(saved.initialDutyPercent ?? 60);
-  // UI-only draft. No command code or device state exists until firmware defines it.
-  const [directionDraft, setDirectionDraft] = useState<
-    "forward" | "reverse" | null
-  >(null);
+  const [directionDraft, setDirectionDraft] = useState(
+    saved.motorDirection ?? null,
+  );
+  const directionSupported =
+    saved.motorDirection === 0 || saved.motorDirection === 1;
   const guide = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     setBlock(saved.autoBlock);
@@ -79,6 +81,10 @@ export function ProductFeatures({
     block >= 0 &&
     block <= 255 &&
     [0, 1, 3, 4, 5].includes(encoding);
+  useEffect(
+    () => setDirectionDraft(saved.motorDirection ?? null),
+    [saved.motorDirection],
+  );
   const timingValid =
     Number.isInteger(ramp) &&
     ramp >= 200 &&
@@ -311,15 +317,16 @@ export function ProductFeatures({
           className="product-direction"
           title={t("电机转向")}
           icon={<RotateCw size={18} />}
-          meta={<span className="tag">{t("待接入")}</span>}
+          meta={<span className="tag">{t("下次启动生效")}</span>}
         >
           <fieldset
             className="direction-options"
             aria-describedby="direction-note"
+            disabled={busy || !directionSupported}
           >
-            <legend className="sr-only">{t("电机转向预选")}</legend>
-            {(["forward", "reverse"] as const).map((direction) => {
-              const Icon = direction === "forward" ? RotateCw : RotateCcw;
+            <legend className="sr-only">{t("电机上电方向")}</legend>
+            {([0, 1] as const).map((direction) => {
+              const Icon = direction === 0 ? RotateCw : RotateCcw;
               return (
                 <label
                   key={direction}
@@ -327,20 +334,43 @@ export function ProductFeatures({
                 >
                   <input
                     type="radio"
-                    name="motor-direction-draft"
+                    name="motor-direction"
+                    aria-label={t(direction === 0 ? "正转" : "反转")}
                     value={direction}
                     checked={directionDraft === direction}
                     onChange={() => setDirectionDraft(direction)}
                   />
                   <Icon size={18} aria-hidden="true" />
-                  <span>{t(direction === "forward" ? "正转" : "反转")}</span>
+                  <span>{t(direction === 0 ? "正转" : "反转")}</span>
                 </label>
               );
             })}
           </fieldset>
-          <p id="direction-note" className="product-help">
-            {t("仅本页预选，不控制电机；通信协议待接入。")}
-          </p>
+          <div className="direction-save">
+            <p id="direction-note" className="product-help">
+              {directionSupported
+                ? `${t("已保存方向")} · ${t(saved.motorDirection === 0 ? "正转" : "反转")}`
+                : t("旧固件未提供方向设置")}
+            </p>
+            <Button
+              variant="primary"
+              disabled={
+                busy ||
+                !directionSupported ||
+                (directionDraft !== 0 && directionDraft !== 1)
+              }
+              onClick={() => {
+                if (directionDraft === 0 || directionDraft === 1)
+                  onExecute("设置电机上电方向", {
+                    command: 0x34,
+                    parameters: [directionDraft],
+                  });
+              }}
+            >
+              <Save size={14} />
+              {t("保存方向")}
+            </Button>
+          </div>
         </Section>
       </div>
       <dialog
@@ -370,6 +400,13 @@ export function ProductFeatures({
         <p>
           {t(
             "先等待启动延时，再从已保存的初始占空比缓升至 100%，PWM 固定 20 kHz。设置下次启动生效。",
+          )}
+        </p>
+        <h3>{t("电机上电方向")}</h3>
+        <p>{t("实际转向取决于电机接线。")}</p>
+        <p>
+          {t(
+            "方向保存后下次上电或复位生效，不切换当前输出。已保存方向不是当前运行方向。",
           )}
         </p>
         <p>

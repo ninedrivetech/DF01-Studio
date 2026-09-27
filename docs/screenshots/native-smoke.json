@@ -1,8 +1,8 @@
 {
   "runtime": "tauri-native-webview2",
-  "configuration": "release",
-  "timestamp": "2026-09-27T13:18:03.510Z",
-  "processId": "15012",
+  "configuration": "debug",
+  "timestamp": "2026-09-27T12:57:20.202Z",
+  "processId": "7292",
   "checks": [
     "Real Tauri IPC detected; application starts disconnected",
     "Undecorated native window has controls beside the theme button in one topbar row, no bottom statusbar, and working maximize, restore and minimize buttons",
@@ -34,7 +34,7 @@
     "Native Cockroach disconnect hides extensions; reconnecting the Fruit Fly simulator restores the Fruit Fly workstation",
     "Topbar close button closed the actual native WebView"
   ],
-  "url": "http://tauri.localhost/",
+  "url": "http://127.0.0.1:1420/",
   "availablePortCount": 8,
   "availablePorts": [
     "COM18",
@@ -96,8 +96,8 @@
       "left": 236.63026428222656
     }
   },
-  "downloadFile": "docs\\screenshots\\testnative-release.log",
+  "downloadFile": "docs\\screenshots\\testnative-debug.log",
   "exportedLogCount": 79,
-  "memoryScreenshot": "docs\\screenshots\\native-release-memory.png",
+  "memoryScreenshot": "docs\\screenshots\\native-memory.png",
   "passed": true
 }

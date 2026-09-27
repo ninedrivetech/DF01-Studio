@@ -134,6 +134,7 @@ pub struct DeviceConfiguration {
     pub ramp_ms: Option<u16>,
     pub startup_delay_ms: Option<u16>,
     pub initial_duty_percent: Option<u8>,
+    pub motor_direction: Option<u8>,
 }
 impl Default for DeviceConfiguration {
     fn default() -> Self {
@@ -151,6 +152,7 @@ impl Default for DeviceConfiguration {
             ramp_ms: Some(2500),
             startup_delay_ms: Some(1000),
             initial_duty_percent: Some(60),
+            motor_direction: Some(0),
         }
     }
 }
@@ -608,7 +610,8 @@ fn validate(request: &CommandRequest) -> Result<(), AppError> {
             && (200..=10000).contains(&u16::from_le_bytes([p[0], p[1]]))
             && (200..=5000).contains(&u16::from_le_bytes([p[2], p[3]])) => {}
         0x33 if p.len() == 1 && p[0] <= 100 => (),
-        0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 => {
+        0x34 if p.len() == 1 && p[0] <= 1 => (),
+        0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 | 0x34 => {
             return Err(invalid())
         }
         _ => return Err(AppError::new("excluded_operation", "该命令不在支持范围内")),
@@ -729,6 +732,17 @@ fn transact(
     drain_before_send(transport, decoder, core, stop)?;
     let address = {
         let state = lock(core)?;
+        if request.command == 0x34
+            && state
+                .configuration
+                .as_ref()
+                .is_none_or(|c| c.motor_direction.is_none())
+        {
+            return Err(AppError::new(
+                "unsupported_firmware",
+                "当前固件未提供电机上电方向，请先读取新版设备配置",
+            ));
+        }
         if request.command == 0x33
             && state
                 .configuration
@@ -906,6 +920,7 @@ fn apply_ack(
         }
         0x30 => configuration.antenna_gain = result.data[1],
         0x33 => configuration.initial_duty_percent = Some(result.data[1]),
+        0x34 => configuration.motor_direction = Some(result.data[1]),
         0x32 => {
             configuration.ramp_ms = Some(u16::from_le_bytes([result.data[1], result.data[2]]));
             configuration.startup_delay_ms =
@@ -1019,7 +1034,7 @@ fn record_frame(
     };
     if !matches!(
         frame.command,
-        0x90 | 0x91 | 0x92 | 0xAB | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1 | 0xB2 | 0xB3
+        0x90 | 0x91 | 0x92 | 0xAB | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1 | 0xB2 | 0xB3 | 0xB4
     ) {
         state.log(
             "system",
@@ -1060,15 +1075,15 @@ fn record_frame(
         0xB0 => 2,
         0xB1 => 27,
         0xB2 => 5,
-        0xB3 => 2,
+        0xB3 | 0xB4 => 2,
         _ => 1,
     };
     let valid_length = if frame.command == 0xB1 {
-        matches!(frame.parameters.len(), 27 | 31 | 32 | 33)
+        matches!(frame.parameters.len(), 27 | 31 | 32 | 33 | 34)
     } else {
         frame.parameters.len() == expected
     };
-    if !valid_length && (status == 0 || frame.parameters.len() != 1) {
+    if !valid_length && (status == 0 || frame.parameters.len() != 1 || frame.command == 0xB4) {
         state.log(
             "system",
             Some(frame.command),
@@ -1113,6 +1128,16 @@ fn record_frame(
         );
         return None;
     }
+    if frame.command == 0xB4 && frame.parameters[1] > 1 {
+        state.log(
+            "system",
+            Some(frame.command),
+            String::new(),
+            "电机上电方向响应超出范围",
+            "error",
+        );
+        return None;
+    }
     if status == 0 && frame.command == 0xB1 {
         let p = &frame.parameters;
         let reset_ms = u16::from_le_bytes([p[24], p[25]]);
@@ -1132,6 +1157,7 @@ fn record_frame(
             || p[26] > 7
             || p.get(31).is_some_and(|mode| *mode > 1)
             || p.get(32).is_some_and(|percent| *percent > 100)
+            || p.get(33).is_some_and(|direction| *direction > 1)
         {
             state.log(
                 "system",
@@ -1156,6 +1182,7 @@ fn record_frame(
             ramp_ms: (p.len() >= 31).then(|| u16::from_le_bytes([p[27], p[28]])),
             startup_delay_ms: (p.len() >= 31).then(|| u16::from_le_bytes([p[29], p[30]])),
             initial_duty_percent: p.get(32).copied(),
+            motor_direction: p.get(33).copied(),
         });
         state.connection.address = p[1];
         state.auto_mode = Some(p[6]);
@@ -1251,6 +1278,7 @@ fn command_name(command: u8) -> &'static str {
         0x31 => "读取全部配置",
         0x32 => "设置启动时序",
         0x33 => "设置初始占空比",
+        0x34 => "设置电机上电方向",
         _ => "未知命令",
     }
 }
@@ -1373,6 +1401,7 @@ impl Simulator {
             parameters.extend(c.startup_delay_ms.unwrap_or(1000).to_le_bytes());
             parameters.push(c.product_mode.unwrap_or(0));
             parameters.push(c.initial_duty_percent.unwrap_or(60));
+            parameters.push(c.motor_direction.unwrap_or(0));
         }
         if frame.command == 0x32 {
             self.configuration.ramp_ms = Some(u16::from_le_bytes([
@@ -1387,6 +1416,10 @@ impl Simulator {
         }
         if frame.command == 0x33 {
             self.configuration.initial_duty_percent = Some(frame.parameters[0]);
+            parameters.push(frame.parameters[0]);
+        }
+        if frame.command == 0x34 {
+            self.configuration.motor_direction = Some(frame.parameters[0]);
             parameters.push(frame.parameters[0]);
         }
         self.response.extend(
@@ -1498,7 +1531,7 @@ mod tests {
         for command in 0..=255 {
             if !matches!(
                 command,
-                0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33
+                0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 | 0x34
             ) {
                 assert_eq!(
                     validate(&request(command, vec![])).unwrap_err().code,
@@ -1576,7 +1609,7 @@ mod tests {
             .execute(request(0x32, vec![0xd0, 7, 0xf4, 1]))
             .unwrap();
         let result = service.execute(request(0x31, vec![])).unwrap();
-        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 1, 60]);
+        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 1, 60, 0]);
         config.simulation_product_mode = 0;
         service.connect(config.clone()).unwrap();
         assert_eq!(
@@ -1596,7 +1629,7 @@ mod tests {
             .unwrap();
         let result = service.execute(request(0x31, vec![])).unwrap();
         assert_eq!(&result.data[6..12], &[3, 8, 5, 1, 9, 8]);
-        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 0, 60]);
+        assert_eq!(&result.data[27..], &[0xd0, 7, 0xf4, 1, 0, 60, 0]);
         for percent in [0, 60, 100] {
             assert_eq!(
                 service.execute(request(0x33, vec![percent])).unwrap().data,
@@ -1612,6 +1645,63 @@ mod tests {
         config.simulation_product_mode = 2;
         assert_eq!(service.connect(config).unwrap_err().code, "invalid_product");
         service.disconnect().unwrap();
+    }
+
+    #[test]
+    fn both_products_save_and_read_motor_direction() {
+        for product_mode in [0, 1] {
+            let service = Service::default();
+            service
+                .connect(Config {
+                    port: String::new(),
+                    baud_rate: 115200,
+                    address: 0,
+                    timeout_ms: 1000,
+                    simulation: true,
+                    simulation_product_mode: product_mode,
+                    profile: "current".into(),
+                })
+                .unwrap();
+            assert_eq!(
+                service
+                    .snapshot()
+                    .unwrap()
+                    .configuration
+                    .unwrap()
+                    .motor_direction,
+                Some(0)
+            );
+            for direction in [1, 1, 0] {
+                assert_eq!(
+                    service
+                        .execute(request(0x34, vec![direction]))
+                        .unwrap()
+                        .data,
+                    vec![0, direction]
+                );
+                let result = service.execute(request(0x31, vec![])).unwrap();
+                assert_eq!(
+                    &result.data[27..],
+                    &[0xc4, 9, 0xe8, 3, product_mode, 60, direction]
+                );
+                assert_eq!(
+                    service
+                        .snapshot()
+                        .unwrap()
+                        .configuration
+                        .unwrap()
+                        .motor_direction,
+                    Some(direction)
+                );
+            }
+            for parameters in [vec![], vec![2], vec![255], vec![0, 1]] {
+                assert_eq!(
+                    service.execute(request(0x34, parameters)).unwrap_err().code,
+                    "invalid_parameters"
+                );
+            }
+            service.disconnect().unwrap();
+        }
     }
 
     #[test]

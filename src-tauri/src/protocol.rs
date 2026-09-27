@@ -235,6 +235,20 @@ mod tests {
             (frame(0x33, &[60]), "7F0400333C0B"),
             (frame(0xb3, &[0, 60]), "7F0500B3003C8A"),
             (frame(0xb3, &[0xfe, 60]), "7F0500B3FE3C74"),
+            (frame(0x34, &[0]), "7F0400340030"),
+            (frame(0x34, &[1]), "7F0400340131"),
+            (frame(0xb4, &[0, 0]), "7F0500B40000B1"),
+            (frame(0xb4, &[0, 1]), "7F0500B40001B0"),
+            (frame(0xb4, &[0xfe, 0]), "7F0500B4FE004F"),
+            (frame(0xb4, &[0xfe, 1]), "7F0500B4FE014E"),
+            (
+                frame(0xb1, &hex("00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 01 3C 00")),
+                "7F2500B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007C409E803013C004D",
+            ),
+            (
+                frame(0xb1, &hex("00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 00 3C 00")),
+                "7F2500B1000000C20100030401000000FFFFFFFFFFFFFFFFFFFFFFFF000007C409E803003C004C",
+            ),
             (frame(0x32, &hex("C4 09 E8 03")), "7F070032C409E80313"),
             (
                 frame(0xb1, &hex("00 00 00C20100 03 04 01000000 FFFFFFFFFFFF FFFFFFFFFFFF 0000 07 C409 E803 01 3C")),

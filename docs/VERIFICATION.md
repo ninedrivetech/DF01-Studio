@@ -1,8 +1,18 @@
 # 果蝇1号 · DF-01 验证记录
 
-更新日期：2026-09-21。环境：Windows x64、Node.js 24、Rust MSVC、Microsoft Edge / WebView2。
+更新日期：2026-09-27。环境：Windows x64、Node.js 24、Rust MSVC、Microsoft Edge / WebView2。
 
 ## 当前验证范围
+
+### Flash v15 完整适配（2026-09-27，1.1.1 重打包）
+
+- Rust 与浏览器模拟器支持 `34/B4` 和 34 字节参数的 `B1`，方向通过 `motorDirection` 回读。旧版配置兼容，缺字段禁止发送，非法或失败响应不覆盖配置，密钥继续脱敏。
+- 扩展页方向独立保存，中英文命令名与日志查询同步；保存值标注下次启动生效，实际旋转方向以接线为准。
+- 前端单元测试 144 项通过，Rust 测试 48 项通过；严格 Clippy、格式检查通过。TypeScript / Vite 构建通过，保留已有的单包体积大于 500 kB 提示。
+- 浏览器相关回归覆盖产品页、配置通信及语言共 16 个场景，最终完整运行全部通过。首次发现 900×640 高度溢出，压缩方向标注及紧凑间距后修复；覆盖保存/回读、失败保留已保存值、未保存草稿离页丢弃、语言切换保留草稿、旧固件禁用，以及 900×640 / 1280×820 中英文首屏、320px 英文方向区和旧固件布局。
+- 原生 Debug WebView2 29 项检查通过，直接使用真实 Tauri IPC 与 Rust 模拟器验证 `34/B4` 及 `B1` 偏移33；报告 `docs/screenshots/native-smoke.json`，方向页截图 `docs/screenshots/native-cockroach.png`。测试进程已关闭。
+- Windows Release 构建及原生 Release WebView2 29 项检查通过，报告为 `docs/screenshots/native-release-smoke.json`；使用最终 EXE 内嵌前端，额外确认界面正文与方向悬浮提示不显示 GPIO 名称。打包脚本 7 项测试通过，第三方许可清单重新生成。便携包保留 1.1.1 版本，归档逐项校验内容，整包校验值见 `release/SHA256SUMS.txt`。
+- 未连接实体设备，未验证实际电机动作、Flash 掉电保存或真实串口电气时序。
 
 ### v14、界面审计与作者信息（2026-09-21）
 
