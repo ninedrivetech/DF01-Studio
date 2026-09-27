@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/Cans518/DF01-Studio">
+  <a href="https://github.com/ninedrivetech/DF01-Studio">
     <img src="assets/df01-logo.svg" alt="DF-01 logo" width="152" height="152">
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;
@@ -23,7 +23,7 @@
   <a href="https://tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8D8?style=flat-square&amp;logo=tauri&amp;logoColor=white" alt="Tauri 2"></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white" alt="React 19"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript 5.8"></a>
-  <a href="https://github.com/Cans518/DF01-Studio/issues"><img src="https://img.shields.io/badge/Issues-238636?style=flat-square&amp;logo=github&amp;logoColor=white" alt="GitHub Issues"></a>
+  <a href="https://github.com/ninedrivetech/DF01-Studio/issues"><img src="https://img.shields.io/badge/Issues-238636?style=flat-square&amp;logo=github&amp;logoColor=white" alt="GitHub Issues"></a>
   <a href="../LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-087F70?style=flat-square" alt="Apache License 2.0"></a>
 </p>
 
@@ -60,7 +60,7 @@ Avant toute écriture, vérifiez le bloc cible et ses 16 octets. Le bloc 0 est e
 Installez Node.js **20.19+ (20.x) ou 22.12+**, npm et Rust stable. Sous Windows, ajoutez Visual Studio C++ Build Tools (MSVC), Windows SDK et WebView2. Les dépendances Linux sont indiquées dans le [guide d’utilisation](USER_GUIDE.md).
 
 ```sh
-git clone https://github.com/Cans518/DF01-Studio.git
+git clone https://github.com/ninedrivetech/DF01-Studio.git
 cd DF01-Studio
 npm ci
 npm run desktop
