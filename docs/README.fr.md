@@ -23,10 +23,7 @@
   <a href="https://tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8D8?style=flat-square&amp;logo=tauri&amp;logoColor=white" alt="Tauri 2"></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white" alt="React 19"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript 5.8"></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Cans518/df01-studio/issues"><img src="https://img.shields.io/badge/Feedback-GitHub%20Issues-238636?style=flat-square&amp;logo=github&amp;logoColor=white" alt="GitHub Issues"></a>
+  <a href="https://github.com/Cans518/df01-studio/issues"><img src="https://img.shields.io/badge/Issues-238636?style=flat-square&amp;logo=github&amp;logoColor=white" alt="GitHub Issues"></a>
   <a href="../LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-087F70?style=flat-square" alt="Apache License 2.0"></a>
 </p>
 
