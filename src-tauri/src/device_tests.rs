@@ -247,7 +247,7 @@ fn connection_probe_selects_the_rate_that_returns_configuration() {
     assert_eq!(result.2.command, 0xB1);
     assert_eq!(
         *attempts.lock().unwrap(),
-        vec![115200, 57600, 38400, 28800, 19200, 14400, 9600]
+        vec![115200, 9600]
     );
 }
 

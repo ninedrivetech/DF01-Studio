@@ -360,9 +360,8 @@ async function executeLocal(
     const started = Date.now();
     while (!demo.simulationCardPresent || (command === 0x11 && p[0] > 63)) {
       if (Date.now() - started >= responseTimeoutMs) {
-        demo.connection.connected = false;
         throw new Error(
-          "等待读卡超时，设备可能仍在等卡或认证；已关闭本次连接以隔离迟到应答，请重新连接",
+          "等待读卡超时，连接保持，请检查卡片后重试",
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 20));

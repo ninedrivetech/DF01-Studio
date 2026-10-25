@@ -125,7 +125,7 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 
-test("simulation isolates a timed-out manual read and recovers after reconnecting", async ({
+test("simulation keeps the connection after a timed-out manual read and recovers", async ({
   page,
 }) => {
   await expect(
@@ -144,9 +144,8 @@ test("simulation isolates a timed-out manual read and recovers after reconnectin
     /等待读卡超时/,
   );
   await expect(
-    page.getByRole("button", { name: "连接设备", exact: true }),
+    page.getByRole("button", { name: "断开连接", exact: true }),
   ).toBeEnabled();
-  await connectSimulation(page);
   await page.getByRole("switch", { name: "模拟卡片在场", exact: true }).check();
   await readUid(page);
   await page.getByRole("button", { name: "断开连接", exact: true }).click();

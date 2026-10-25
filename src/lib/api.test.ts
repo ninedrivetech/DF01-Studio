@@ -321,7 +321,7 @@ describe("browser simulator workflows", () => {
       "等待读卡超时",
     );
     const snapshot = await api.snapshot();
-    expect(snapshot.connection.connected).toBe(false);
+    expect(snapshot.connection.connected).toBe(true);
     expect(snapshot.logs.some((entry) => entry.command === 0x91)).toBe(false);
   });
 

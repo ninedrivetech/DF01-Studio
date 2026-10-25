@@ -323,6 +323,11 @@ impl Service {
         if !config.simulation && (config.port.trim().is_empty() || config.port.len() > 256) {
             return Err(AppError::new("invalid_port", "请选择有效串口"));
         }
+        let serial_probe = if config.simulation {
+            None
+        } else {
+            Some(probe_serial(&config.port, config.address, config.timeout_ms)?)
+        };
         let mut worker = lock(&self.worker)?;
         stop_worker(&mut worker);
         {
@@ -343,7 +348,9 @@ impl Service {
             )
         } else {
             let (port, baud_rate, configuration) =
-                probe_serial(&config.port, config.address, config.timeout_ms)?;
+                serial_probe.ok_or_else(|| {
+                    AppError::new("internal_error", "串口探测结果缺失，请重新连接")
+                })?;
             (Transport::Serial(port), baud_rate, Some(configuration))
         };
         let connection = Connection {
@@ -683,7 +690,7 @@ fn valid_configuration(address: u8, parameters: &[u8]) -> bool {
         && parameters.get(33).is_none_or(|direction| *direction <= 1)
 }
 const BAUD_RATES: &[u32] = &[
-    115200, 57600, 38400, 28800, 19200, 14400, 9600, 4800, 2400,
+    115200, 9600, 57600, 38400, 28800, 19200, 14400, 4800, 2400,
 ];
 
 fn sensitive_request(request: &CommandRequest) -> bool {
@@ -814,16 +821,10 @@ fn run_worker(
                     &work.request,
                     timeout_ms,
                 );
-                let fatal = outcome.as_ref().err().is_some_and(|e| {
-                    matches!(
-                        e.code.as_str(),
-                        "timeout"
-                            | "uncertain_result"
-                            | "serial_error"
-                            | "disconnected"
-                            | "internal_error"
-                    )
-                });
+                let fatal = outcome
+                    .as_ref()
+                    .err()
+                    .is_some_and(|error| fatal_error(&work.request, error));
                 if let Err(error) = &outcome {
                     if let Ok(mut state) = core.lock() {
                         state.log(
@@ -1002,7 +1003,7 @@ fn transact(
                 if mutation {
                     "等待应答超时，设备可能已执行操作。连接已关闭以避免迟到应答误配，请核实设备配置或卡片数据后重新连接；程序未重试"
                 } else if matches!(request.command, 0x10 | 0x11) {
-                    "等待读卡超时：设备可能仍在等卡、认证或等待队列空间，不代表断线。已关闭本次连接以隔离迟到应答；固件没有取消指令，重新连接后旧读卡结果仍可能到达"
+                    "等待读卡超时：设备可能仍在等卡、认证或等待队列空间；连接保持，固件没有取消指令，后续仍可能收到读卡应答"
                 } else {
                     "等待设备应答超时，连接已关闭以避免迟到应答误配。请检查卡片、地址、波特率和接线后重新连接"
                 },
@@ -1043,6 +1044,14 @@ fn transact(
         if matches!(transport, Transport::Simulation(_)) {
             thread::sleep(Duration::from_millis(5));
         }
+    }
+}
+
+fn fatal_error(request: &CommandRequest, error: &AppError) -> bool {
+    match error.code.as_str() {
+        "timeout" => !matches!(request.command, 0x10 | 0x11),
+        "uncertain_result" | "serial_error" | "disconnected" | "internal_error" => true,
+        _ => false,
     }
 }
 
@@ -2029,6 +2038,60 @@ mod tests {
             })
             .unwrap_err();
         assert_eq!(error.code, "baud_probe_failed");
+    }
+
+    #[test]
+    fn failed_serial_probe_preserves_the_existing_connection() {
+        let service = simulator();
+        let error = service
+            .connect(Config {
+                port: "COM-NOT-OPENED".into(),
+                baud_rate: 115200,
+                address: 0,
+                timeout_ms: 1000,
+                simulation: false,
+                simulation_product_mode: 0,
+                profile: "current".into(),
+            })
+            .unwrap_err();
+        assert_eq!(error.code, "baud_probe_failed");
+        assert!(service.snapshot().unwrap().connection.connected);
+        assert!(service.snapshot().unwrap().connection.simulation);
+        service.disconnect().unwrap();
+    }
+
+    #[test]
+    fn failed_manual_card_read_is_not_a_fatal_connection_error() {
+        assert!(!fatal_error(
+            &request(0x10, vec![]),
+            &AppError::new("timeout", "等待读卡超时")
+        ));
+        assert!(!fatal_error(
+            &request(0x11, vec![1]),
+            &AppError::new("timeout", "等待读卡超时")
+        ));
+        assert!(fatal_error(
+            &request(0x12, vec![1; 17]),
+            &AppError::new("uncertain_result", "写入结果不确定")
+        ));
+        assert!(fatal_error(
+            &request(0x10, vec![]),
+            &AppError::new("serial_error", "串口已断开")
+        ));
+    }
+
+    #[test]
+    fn manual_read_timeout_keeps_worker_available_for_next_read() {
+        let service = simulator();
+        service.set_simulation_card(false).unwrap();
+        assert_eq!(
+            service.execute(request(0x10, vec![])).unwrap_err().code,
+            "timeout"
+        );
+        assert!(service.snapshot().unwrap().connection.connected);
+        service.set_simulation_card(true).unwrap();
+        assert_eq!(service.execute(request(0x10, vec![])).unwrap().status, 0);
+        service.disconnect().unwrap();
     }
 
     #[test]
