@@ -199,6 +199,59 @@ fn transaction(
 }
 
 #[test]
+fn baud_ack_switches_serial_port_after_old_rate_response() {
+    let (mut transport, state) = mock_transport(response(0, 0xAC, &[0]), 512);
+    let mut initial = Core::default();
+    initial.connection.connected = true;
+    initial.configuration = Some(DeviceConfiguration::default());
+    let core = Mutex::new(initial);
+    let result = transaction(
+        &mut transport,
+        &mut Decoder::default(),
+        &core,
+        &request(0x2C, vec![0x80, 0x25, 0, 0, 0x98, 0x24, 0x31]),
+    )
+    .unwrap();
+    assert_eq!(result.status, 0);
+    assert_eq!(state.lock().unwrap().baud_attempts, vec![9600]);
+    assert_eq!(core.lock().unwrap().connection.baud_rate, 9600);
+    assert_eq!(
+        core.lock().unwrap().configuration.as_ref().unwrap().baud_rate,
+        9600
+    );
+}
+
+#[test]
+fn connection_probe_selects_the_rate_that_returns_configuration() {
+    let attempts = Arc::new(Mutex::new(Vec::new()));
+    let attempts_for_open = attempts.clone();
+    let mut configuration = vec![0, 0, 0x80, 0x25, 0, 0, 0, 4, 1, 0, 0, 0];
+    configuration.extend([0xFF; 12]);
+    configuration.extend([0, 0, 7]);
+    let result = probe_serial_with(0, 100, move |baud_rate| {
+        attempts_for_open.lock().unwrap().push(baud_rate);
+        let state = Arc::new(Mutex::new(MockState {
+            response_on_write: (baud_rate == 9600)
+                .then(|| response(0, 0xB1, &configuration)),
+            ..Default::default()
+        }));
+        Ok(Box::new(MockSerial {
+            state,
+            read_chunk: 512,
+            baud: baud_rate,
+            timeout: Duration::from_millis(20),
+        }))
+    })
+    .unwrap();
+    assert_eq!(result.1, 9600);
+    assert_eq!(result.2.command, 0xB1);
+    assert_eq!(
+        *attempts.lock().unwrap(),
+        vec![115200, 57600, 38400, 28800, 19200, 14400, 9600]
+    );
+}
+
+#[test]
 fn conflicting_automatic_block_read_never_sends_or_misattributes_trailer_data() {
     let (mut transport, state) = mock_transport(response(0, 0x91, &[0; 23]), 512);
     let core = Mutex::new(Core {

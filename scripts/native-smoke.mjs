@@ -199,7 +199,7 @@ try {
   report.checks.push('Native serial discovery and complete naturally sorted dropdown verified; every discovered port selected without opening hardware connections');
 
   await page.getByRole('combobox', { name: '连接方式', exact: true }).selectOption('simulation');
-  const connection = await invoke('connect_device', { config: { port: '', baudRate: 115200, address: 0, timeoutMs: 1000, simulation: true, profile: 'current' } });
+  const connection = await invoke('connect_device', { config: { port: '', address: 0, timeoutMs: 1000, simulation: true, profile: 'current' } });
   ownsSimulation = true;
   assert.equal(connection.connected, true);
   assert.equal(connection.simulation, true);
@@ -210,7 +210,7 @@ try {
   assert.equal(synchronized.configuration.resetMs, 0);
   assert.equal(synchronized.configuration.antennaGain, 7);
   assert.equal(synchronized.logs.filter(log => log.direction === 'tx' && log.command === 0x31).length, 1, 'Connection must synchronize configuration exactly once');
-  report.checks.push('Connection synchronizes 31/B1 configuration at fixed 115200 baud');
+  report.checks.push('Connection synchronizes 31/B1 configuration and reports the device baud rate');
   await expect(page).toHaveTitle('果蝇1号 · DF-01');
   await expect(page.getByRole('button', { name: '断开连接', exact: true })).toBeVisible();
   // Finish the default connection-time report before measuring a new mode's cue.
@@ -348,10 +348,12 @@ try {
   assert.equal(resetPreview.hex, '7F 05 00 2F E8 03 C1');
   await execute(0x2f, [100, 0]);
   await execute(0x30, [7]);
+  await execute(0x2c, [0x80, 0x25, 0, 0, 0x98, 0x24, 0x31]);
   await execute(0x31);
   const updatedConfiguration = (await invoke('get_snapshot')).configuration;
   assert.equal(updatedConfiguration.resetMs, 100);
   assert.equal(updatedConfiguration.antennaGain, 7);
+  assert.equal(updatedConfiguration.baudRate, 9600);
   await execute(0x2d, [0x7f, 0x37, 0x21, 0x56]);
   assert.equal((await invoke('get_snapshot')).connection.address, 0x7f, 'Successful AD at the new ID must update the connection');
   await execute(0x31);
@@ -368,11 +370,8 @@ try {
   assert.equal((await invoke('get_snapshot')).stats.tx, txBeforeRejected);
   report.checks.push('Excluded identity and transaction commands never transmit');
 
-  let rejectedBaud;
-  try { await invoke('execute_command', { request: { command: 0x2c, parameters: [0, 0xc2, 1, 0, 0x98, 0x24, 0x31], byteOrder: 'little' } }); } catch (error) { rejectedBaud = error; }
-  assert.ok(rejectedBaud, 'Baud-rate changes must be rejected');
-  assert.equal((await invoke('get_snapshot')).stats.tx, txBeforeRejected);
-  report.checks.push('Removed baud-rate command cannot transmit through native IPC');
+  assert.equal((await invoke('get_snapshot')).connection.baudRate, 9600);
+  report.checks.push('Baud-rate change and configuration readback verified');
 
   await invoke('set_simulation_card', { present: false });
   const pendingRead = invoke('execute_command', { request: { command: 0x10, parameters: [] } });

@@ -18,15 +18,16 @@ export function SerialPortPicker({
   onChange,
   disabled,
   simulation,
+  className = "",
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
   simulation: boolean;
+  className?: string;
 }) {
   useLanguage();
   const [ports, setPorts] = useState<Port[]>([]);
-  const [manual, setManual] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -73,16 +74,14 @@ export function SerialPortPicker({
   const missing = value && !ports.some((port) => port.name === value);
   const options = [
     { name: "", label: t("请选择串口"), kind: "" },
-    ...(missing
-      ? [{ name: value, label: value, kind: t("未检测到 / 手动指定") }]
-      : []),
+    ...(missing ? [{ name: value, label: value, kind: t("未检测到") }] : []),
     ...ports.map((port) => ({ ...port, label: portLabel(port) })),
   ];
   const selected = options.find((port) => port.name === value);
-  const expanded = open && !disabled && !simulation && !manual;
+  const expanded = open && !disabled && !simulation;
   useEffect(() => {
-    if (disabled || simulation || manual) setOpen(false);
-  }, [disabled, simulation, manual]);
+    if (disabled || simulation) setOpen(false);
+  }, [disabled, simulation]);
   useEffect(() => {
     if (!expanded) return;
     const dismiss = (event: PointerEvent) => {
@@ -99,7 +98,7 @@ export function SerialPortPicker({
   }, [active, expanded]);
   return (
     <div
-      className="field serial-picker"
+      className={`field serial-picker ${className}`.trim()}
       ref={picker}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
@@ -110,139 +109,116 @@ export function SerialPortPicker({
           {t("串口")}
           {!simulation && t(` · ${ports.length} 个`)}
         </label>
-        <button
-          type="button"
-          disabled={disabled || simulation}
-          onClick={() => setManual((current) => !current)}
-        >
-          {manual ? t("返回列表") : t("手动输入")}
-        </button>
       </div>
       <div className="serial-controls">
-        {manual && !simulation ? (
-          <input
+        <div className="serial-dropdown">
+          <button
+            type="button"
+            className="serial-trigger"
             id="serial-port"
-            aria-label={t("手动串口")}
-            placeholder={t("例如 COM3")}
-            value={value}
-            disabled={disabled}
-            spellCheck={false}
-            onChange={(event) => onChange(event.target.value)}
-          />
-        ) : (
-          <div className="serial-dropdown">
-            <button
-              type="button"
-              className="serial-trigger"
-              id="serial-port"
-              role="combobox"
-              aria-label={t("串口")}
-              aria-expanded={expanded}
-              aria-controls={expanded ? "serial-options" : undefined}
-              aria-activedescendant={
-                expanded
-                  ? `serial-option-${options.findIndex((port) => port.name === active)}`
-                  : undefined
+            role="combobox"
+            aria-label={t("串口")}
+            aria-expanded={expanded}
+            aria-controls={expanded ? "serial-options" : undefined}
+            aria-activedescendant={
+              expanded
+                ? `serial-option-${options.findIndex((port) => port.name === active)}`
+                : undefined
+            }
+            title={simulation ? "SIMULATOR" : selected?.label}
+            disabled={disabled || simulation}
+            onClick={() => {
+              setActive(value);
+              setOpen(!expanded);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setOpen(false);
+                event.preventDefault();
+                return;
               }
-              title={simulation ? "SIMULATOR" : selected?.label}
-              disabled={disabled || simulation}
-              onClick={() => {
-                setActive(value);
-                setOpen(!expanded);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setOpen(false);
-                  event.preventDefault();
-                  return;
-                }
-                if (
-                  ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
-                ) {
-                  event.preventDefault();
-                  const index = options.findIndex(
-                    (port) => port.name === (expanded ? active : value),
-                  );
-                  const next =
-                    event.key === "Home"
-                      ? 0
-                      : event.key === "End"
-                        ? options.length - 1
-                        : Math.max(
-                            0,
-                            Math.min(
-                              options.length - 1,
-                              index + (event.key === "ArrowDown" ? 1 : -1),
-                            ),
-                          );
-                  setActive(options[next].name);
-                  setOpen(true);
-                } else if (
-                  expanded &&
-                  (event.key === "Enter" || event.key === " ")
-                ) {
-                  event.preventDefault();
-                  if (options.some((port) => port.name === active))
-                    onChange(active);
-                  setOpen(false);
-                }
-              }}
-            >
-              <span>
-                {simulation
-                  ? "SIMULATOR"
-                  : value
-                    ? selected?.label
-                    : ports.length
-                      ? t("请选择串口")
-                      : loading
-                        ? t("正在扫描串口…")
-                        : t("未发现串口")}
-              </span>
-              <ChevronDown size={15} aria-hidden="true" />
-            </button>
-            {expanded && (
-              <div
-                className="serial-options"
-                id="serial-options"
-                role="listbox"
-                aria-label={t("可用串口")}
-              >
-                {options.map((port, index) => (
-                  <div
-                    key={port.name}
-                    id={`serial-option-${index}`}
-                    role="option"
-                    aria-selected={port.name === value}
-                    data-active={port.name === active}
-                    className="serial-option"
-                    onPointerMove={() => setActive(port.name)}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      onChange(port.name);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="serial-option-copy">
-                      <span>{port.label}</span>
-                      {port.kind && <small>{port.kind}</small>}
-                    </span>
-                    {port.name === value && (
-                      <Check size={15} aria-hidden="true" />
-                    )}
-                  </div>
-                ))}
-                {!ports.length && (
-                  <p className="serial-empty">
-                    {loading
+              if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+                event.preventDefault();
+                const index = options.findIndex(
+                  (port) => port.name === (expanded ? active : value),
+                );
+                const next =
+                  event.key === "Home"
+                    ? 0
+                    : event.key === "End"
+                      ? options.length - 1
+                      : Math.max(
+                          0,
+                          Math.min(
+                            options.length - 1,
+                            index + (event.key === "ArrowDown" ? 1 : -1),
+                          ),
+                        );
+                setActive(options[next].name);
+                setOpen(true);
+              } else if (
+                expanded &&
+                (event.key === "Enter" || event.key === " ")
+              ) {
+                event.preventDefault();
+                if (options.some((port) => port.name === active))
+                  onChange(active);
+                setOpen(false);
+              }
+            }}
+          >
+            <span>
+              {simulation
+                ? "SIMULATOR"
+                : value
+                  ? selected?.label
+                  : ports.length
+                    ? t("请选择串口")
+                    : loading
                       ? t("正在扫描串口…")
-                      : t("未发现串口，请刷新或手动输入")}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                      : t("未发现串口")}
+            </span>
+            <ChevronDown size={15} aria-hidden="true" />
+          </button>
+          {expanded && (
+            <div
+              className="serial-options"
+              id="serial-options"
+              role="listbox"
+              aria-label={t("可用串口")}
+            >
+              {options.map((port, index) => (
+                <div
+                  key={port.name}
+                  id={`serial-option-${index}`}
+                  role="option"
+                  aria-selected={port.name === value}
+                  data-active={port.name === active}
+                  className="serial-option"
+                  onPointerMove={() => setActive(port.name)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onChange(port.name);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="serial-option-copy">
+                    <span>{port.label}</span>
+                    {port.kind && <small>{port.kind}</small>}
+                  </span>
+                  {port.name === value && (
+                    <Check size={15} aria-hidden="true" />
+                  )}
+                </div>
+              ))}
+              {!ports.length && (
+                <p className="serial-empty">
+                  {loading ? t("正在扫描串口…") : t("未发现串口，请刷新")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         <IconButton
           label={t("刷新串口")}
           disabled={disabled || simulation || loading}

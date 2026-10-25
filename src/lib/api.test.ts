@@ -224,9 +224,12 @@ describe("command validation", () => {
     );
   });
 
-  it("excludes baud changes and validates reset/gain extension ranges", () => {
-    const baud = request(0x2c, [0, 1, 0xc2, 0, 0x98, 0x24, 0x31]);
-    expect(() => validateRequest(baud)).toThrow("支持范围");
+  it("accepts supported baud changes and validates reset/gain extension ranges", () => {
+    const baud = request(0x2c, [0, 0xc2, 1, 0, 0x98, 0x24, 0x31]);
+    expect(() => validateRequest(baud)).not.toThrow();
+    expect(() =>
+      validateRequest(request(0x2c, [0, 0, 0, 0, 0x98, 0x24, 0x31])),
+    ).toThrow("波特率");
     for (const value of [0, 100, 1000, 3000])
       expect(() =>
         validateRequest(request(0x2f, [value & 255, value >> 8])),
@@ -245,7 +248,6 @@ describe("browser simulator workflows", () => {
   let api: typeof import("./api").api;
   const config: ConnectConfig = {
     port: "",
-    baudRate: 115200,
     address: 0,
     timeoutMs: 1500,
     simulation: true,
@@ -461,9 +463,11 @@ describe("browser simulator workflows", () => {
     expect(
       snapshot.logs.find((entry) => entry.command === 0xb1)?.hex,
     ).toContain("隐藏");
-    await expect(api.connect({ ...config, baudRate: 9600 })).rejects.toThrow(
-      "115200",
-    );
+    await api.execute(request(0x2c, [0x80, 0x25, 0, 0, 0x98, 0x24, 0x31]));
+    expect((await api.snapshot()).connection.baudRate).toBe(9600);
+    expect((await api.execute(request(0x31))).data.slice(2, 6)).toEqual([
+      0x80, 0x25, 0, 0,
+    ]);
   });
 
   it("reads the selected Cockroach product and persists voice and startup settings", async () => {

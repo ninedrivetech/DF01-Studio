@@ -35,6 +35,7 @@ impl AppError {
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub port: String,
+    #[serde(default = "default_baud")]
     pub baud_rate: u32,
     pub address: u8,
     pub timeout_ms: u64,
@@ -255,6 +256,9 @@ fn lock<T>(value: &Mutex<T>) -> Result<MutexGuard<'_, T>, AppError> {
 fn default_profile() -> String {
     "current".into()
 }
+fn default_baud() -> u32 {
+    115200
+}
 fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -307,8 +311,8 @@ impl Service {
                 "固件配置必须为 current 或 full",
             ));
         }
-        if config.baud_rate != 115200 {
-            return Err(AppError::new("invalid_baud", "上位机固定使用 115200 bit/s"));
+        if config.simulation && !valid_baud(config.baud_rate) {
+            return Err(AppError::new("invalid_baud", "波特率不在设备支持范围内"));
         }
         if !(100..=15000).contains(&config.timeout_ms) {
             return Err(AppError::new(
@@ -325,32 +329,22 @@ impl Service {
             let mut core = lock(&self.core)?;
             core.connection.connected = false;
         }
-        let transport = if config.simulation {
+        let (transport, detected_baud, probed_configuration) = if config.simulation {
             let mut simulator = Simulator::new();
             simulator.configuration.module_id = config.address;
             simulator.configuration.product_mode = Some(config.simulation_product_mode);
             if config.simulation_product_mode == 1 {
                 simulator.configuration.auto_mode = 3;
             }
-            Transport::Simulation(Box::new(simulator))
+            (
+                Transport::Simulation(Box::new(simulator)),
+                config.baud_rate,
+                None,
+            )
         } else {
-            let port = serialport::new(&config.port, config.baud_rate)
-                .data_bits(serialport::DataBits::Eight)
-                .stop_bits(serialport::StopBits::One)
-                .parity(serialport::Parity::None)
-                .flow_control(serialport::FlowControl::None)
-                .timeout(Duration::from_millis(20))
-                .open()
-                .map_err(|e| {
-                    let error = AppError::io(e);
-                    if let Ok(mut core) = self.core.lock() {
-                        core.log("system", None, String::new(), &error.message, "error");
-                    }
-                    error
-                })?;
-            port.clear(serialport::ClearBuffer::All)
-                .map_err(AppError::io)?;
-            Transport::Serial(port)
+            let (port, baud_rate, configuration) =
+                probe_serial(&config.port, config.address, config.timeout_ms)?;
+            (Transport::Serial(port), baud_rate, Some(configuration))
         };
         let connection = Connection {
             connected: true,
@@ -360,7 +354,7 @@ impl Service {
             } else {
                 config.port.clone()
             },
-            baud_rate: config.baud_rate,
+            baud_rate: detected_baud,
             address: config.address,
             profile: config.profile.clone(),
         };
@@ -384,6 +378,36 @@ impl Service {
                 },
                 "success",
             );
+        }
+        if let Some(configuration) = probed_configuration {
+            let request = CommandRequest {
+                command: 0x31,
+                parameters: vec![],
+                confirmed_write: false,
+            };
+            {
+                let mut core = lock(&self.core)?;
+                let bytes = encode(&Frame {
+                    address: config.address,
+                    command: 0x31,
+                    parameters: vec![],
+                })
+                .map_err(|message| AppError::new("invalid_frame", &message))?;
+                core.stats.tx += 1;
+                core.log(
+                    "tx",
+                    Some(0x31),
+                    hex(&bytes),
+                    "发送读取全部配置",
+                    "info",
+                );
+            }
+            if record_frame(&self.core, Ok(configuration), Some(&request)).is_none() {
+                if let Ok(mut core) = self.core.lock() {
+                    core.connection.connected = false;
+                }
+                return Err(AppError::new("configuration_failed", "读取模块配置失败"));
+            }
         }
         let (sender, receiver) = mpsc::sync_channel(8);
         let stop = Arc::new(AtomicBool::new(false));
@@ -427,24 +451,26 @@ impl Service {
             join: Some(join),
         });
         drop(worker);
-        let result = match self.execute(CommandRequest {
-            command: 0x31,
-            parameters: vec![],
-            confirmed_write: false,
-        }) {
-            Ok(result) => result,
-            Err(error) => {
-                // A failed initial query must never leave a seemingly ready connection.
+        if config.simulation {
+            let result = match self.execute(CommandRequest {
+                command: 0x31,
+                parameters: vec![],
+                confirmed_write: false,
+            }) {
+                Ok(result) => result,
+                Err(error) => {
+                    // A failed initial query must never leave a seemingly ready connection.
+                    self.disconnect()?;
+                    return Err(error);
+                }
+            };
+            if result.status != 0 {
                 self.disconnect()?;
-                return Err(error);
+                return Err(AppError::new(
+                    "configuration_failed",
+                    &format!("读取模块配置失败：{}", result.message),
+                ));
             }
-        };
-        if result.status != 0 {
-            self.disconnect()?;
-            return Err(AppError::new(
-                "configuration_failed",
-                &format!("读取模块配置失败：{}", result.message),
-            ));
         }
         Ok(lock(&self.core)?.connection.clone())
     }
@@ -597,6 +623,9 @@ fn validate(request: &CommandRequest) -> Result<(), AppError> {
             }
         }
         0x2B if p.len() == 18 && p[12..] == [0x00, 0x03, 0x08, 0x05, 0x02, 0x07] => (),
+        0x2C if p.len() == 7
+            && valid_baud(u32::from_le_bytes(p[..4].try_into().unwrap()))
+            && p[4..] == [0x98, 0x24, 0x31] => {}
         0x2D if p.len() == 4 && p[1..] == [0x37, 0x21, 0x56] => (),
         0x2E if p.len() == 10
             && p[0] <= 3
@@ -622,6 +651,40 @@ fn validate(request: &CommandRequest) -> Result<(), AppError> {
 fn valid_reset(value: u16) -> bool {
     value == 0 || (100..=3000).contains(&value)
 }
+fn valid_baud(value: u32) -> bool {
+    matches!(
+        value,
+        2400 | 4800 | 9600 | 14400 | 19200 | 28800 | 38400 | 57600 | 115200
+    )
+}
+fn valid_configuration(address: u8, parameters: &[u8]) -> bool {
+    if !matches!(parameters.len(), 27 | 31 | 32 | 33 | 34) {
+        return false;
+    }
+    let reset_ms = u16::from_le_bytes([parameters[24], parameters[25]]);
+    let valid_timing = parameters.len() < 31
+        || ((200..=10000).contains(&u16::from_le_bytes([parameters[27], parameters[28]]))
+            && (200..=5000).contains(&u16::from_le_bytes([
+                parameters[29],
+                parameters[30],
+            ])));
+    parameters[1] == address
+        && valid_baud(u32::from_le_bytes(
+            parameters[2..6].try_into().unwrap(),
+        ))
+        && parameters[6] <= 3
+        && (parameters[6] != 3
+            || (matches!(parameters[8], 0 | 1 | 3 | 4 | 5) && parameters[9] <= 1))
+        && valid_timing
+        && valid_reset(reset_ms)
+        && parameters[26] <= 7
+        && parameters.get(31).is_none_or(|mode| *mode <= 1)
+        && parameters.get(32).is_none_or(|percent| *percent <= 100)
+        && parameters.get(33).is_none_or(|direction| *direction <= 1)
+}
+const BAUD_RATES: &[u32] = &[
+    115200, 57600, 38400, 28800, 19200, 14400, 9600, 4800, 2400,
+];
 
 fn sensitive_request(request: &CommandRequest) -> bool {
     request.command == 0x2B
@@ -635,6 +698,101 @@ fn sensitive_request(request: &CommandRequest) -> bool {
 enum Transport {
     Serial(Box<dyn SerialPort>),
     Simulation(Box<Simulator>),
+}
+
+fn open_serial(port_name: &str, baud_rate: u32) -> Result<Box<dyn SerialPort>, AppError> {
+    let port = serialport::new(port_name, baud_rate)
+        .data_bits(serialport::DataBits::Eight)
+        .stop_bits(serialport::StopBits::One)
+        .parity(serialport::Parity::None)
+        .flow_control(serialport::FlowControl::None)
+        .timeout(Duration::from_millis(20))
+        .open()
+        .map_err(AppError::io)?;
+    port.clear(serialport::ClearBuffer::All)
+        .map_err(AppError::io)?;
+    Ok(port)
+}
+
+fn probe_serial(
+    port_name: &str,
+    address: u8,
+    timeout_ms: u64,
+) -> Result<(Box<dyn SerialPort>, u32, Frame), AppError> {
+    probe_serial_with(address, timeout_ms, |baud_rate| {
+        open_serial(port_name, baud_rate)
+    })
+}
+
+fn probe_serial_with<F>(
+    address: u8,
+    timeout_ms: u64,
+    mut open: F,
+) -> Result<(Box<dyn SerialPort>, u32, Frame), AppError>
+where
+    F: FnMut(u32) -> Result<Box<dyn SerialPort>, AppError>,
+{
+    let request = Frame {
+        address,
+        command: 0x31,
+        parameters: vec![],
+    };
+    let bytes = encode(&request).map_err(|message| AppError::new("invalid_frame", &message))?;
+    let probe_timeout = Duration::from_millis(timeout_ms.min(500));
+    let mut last_error = None;
+    for baud_rate in BAUD_RATES {
+        let mut port = match open(*baud_rate) {
+            Ok(port) => port,
+            Err(error) => {
+                last_error = Some(error.message);
+                continue;
+            }
+        };
+        if let Err(error) = port.write_all(&bytes) {
+            last_error = Some(format!("串口错误：{error}"));
+            continue;
+        }
+        let deadline = Instant::now() + probe_timeout;
+        let mut decoder = Decoder::default();
+        let mut buffer = [0u8; 512];
+        while Instant::now() < deadline {
+            match port.read(&mut buffer) {
+                Ok(count) => {
+                    for parsed in decoder.push(&buffer[..count]) {
+                        if let Ok(frame) = parsed {
+                            if frame.address == address
+                                && frame.command == 0xB1
+                                && frame.parameters.first() == Some(&0)
+                                && valid_configuration(frame.address, &frame.parameters)
+                            {
+                                return Ok((port, *baud_rate, frame));
+                            }
+                        }
+                    }
+                }
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::TimedOut
+                            | std::io::ErrorKind::WouldBlock
+                            | std::io::ErrorKind::Interrupted
+                    ) => {}
+                Err(error) => {
+                    last_error = Some(format!("串口错误：{error}"));
+                    break;
+                }
+            }
+        }
+    }
+    Err(AppError::new(
+        "baud_probe_failed",
+        &format!(
+            "未能自动探测模块波特率，请检查串口、模块 ID 和接线{}",
+            last_error
+                .map(|error| format!("（最后一次错误：{error}）"))
+                .unwrap_or_default()
+        ),
+    ))
 }
 
 fn run_worker(
@@ -873,6 +1031,7 @@ fn transact(
             let result = record_frame(core, frame, if is_match { Some(request) } else { None });
             if is_match {
                 if result.as_ref().is_some_and(|result| result.status == 0) {
+                    apply_transport_ack(&mut *transport, core, request)?;
                     apply_ack(core, request, result.as_ref().unwrap())?;
                 }
                 matched = result;
@@ -887,6 +1046,23 @@ fn transact(
     }
 }
 
+fn apply_transport_ack(
+    transport: &mut Transport,
+    core: &Mutex<Core>,
+    request: &CommandRequest,
+) -> Result<(), AppError> {
+    if request.command != 0x2C {
+        return Ok(());
+    }
+    let baud_rate = u32::from_le_bytes(request.parameters[..4].try_into().unwrap());
+    if let Transport::Serial(port) = transport {
+        port.flush().map_err(AppError::io)?;
+        port.set_baud_rate(baud_rate).map_err(AppError::io)?;
+    }
+    lock(core)?.connection.baud_rate = baud_rate;
+    Ok(())
+}
+
 fn apply_ack(
     core: &Mutex<Core>,
     request: &CommandRequest,
@@ -895,6 +1071,10 @@ fn apply_ack(
     let mut state = lock(core)?;
     if request.command == 0x2D {
         state.connection.address = request.parameters[0];
+    }
+    if request.command == 0x2C {
+        state.connection.baud_rate =
+            u32::from_le_bytes(request.parameters[..4].try_into().unwrap());
     }
     if request.command == 0x2E {
         state.auto_mode = Some(request.parameters[0]);
@@ -907,6 +1087,10 @@ fn apply_ack(
         0x2B => {
             configuration.key_a = request.parameters[..6].to_vec();
             configuration.key_b = request.parameters[6..12].to_vec();
+        }
+        0x2C => {
+            configuration.baud_rate =
+                u32::from_le_bytes(request.parameters[..4].try_into().unwrap());
         }
         0x2D => configuration.module_id = request.parameters[0],
         0x2E => {
@@ -1034,7 +1218,7 @@ fn record_frame(
     };
     if !matches!(
         frame.command,
-        0x90 | 0x91 | 0x92 | 0xAB | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1 | 0xB2 | 0xB3 | 0xB4
+        0x90 | 0x91 | 0x92 | 0xAB | 0xAC | 0xAD | 0xAE | 0xAF | 0xB0 | 0xB1 | 0xB2 | 0xB3 | 0xB4
     ) {
         state.log(
             "system",
@@ -1072,6 +1256,7 @@ fn record_frame(
     let expected = match frame.command {
         0x90 | 0x92 => 7,
         0x91 => 23,
+        0xAC => 1,
         0xB0 => 2,
         0xB1 => 27,
         0xB2 => 5,
@@ -1140,25 +1325,7 @@ fn record_frame(
     }
     if status == 0 && frame.command == 0xB1 {
         let p = &frame.parameters;
-        let reset_ms = u16::from_le_bytes([p[24], p[25]]);
-        let baud_rate = u32::from_le_bytes(p[2..6].try_into().ok()?);
-        let valid_timing = p.len() < 31
-            || ((200..=10000).contains(&u16::from_le_bytes([p[27], p[28]]))
-                && (200..=5000).contains(&u16::from_le_bytes([p[29], p[30]])));
-        if p[1] != frame.address
-            || !matches!(
-                baud_rate,
-                2400 | 4800 | 9600 | 14400 | 19200 | 28800 | 38400 | 57600 | 115200
-            )
-            || p[6] > 3
-            || (p[6] == 3 && (!matches!(p[8], 0 | 1 | 3 | 4 | 5) || p[9] > 1))
-            || !valid_timing
-            || !valid_reset(reset_ms)
-            || p[26] > 7
-            || p.get(31).is_some_and(|mode| *mode > 1)
-            || p.get(32).is_some_and(|percent| *percent > 100)
-            || p.get(33).is_some_and(|direction| *direction > 1)
-        {
+        if !valid_configuration(frame.address, p) {
             state.log(
                 "system",
                 Some(frame.command),
@@ -1168,6 +1335,8 @@ fn record_frame(
             );
             return None;
         }
+        let reset_ms = u16::from_le_bytes([p[24], p[25]]);
+        let baud_rate = u32::from_le_bytes(p[2..6].try_into().ok()?);
         state.configuration = Some(DeviceConfiguration {
             module_id: p[1],
             baud_rate,
@@ -1271,6 +1440,7 @@ fn command_name(command: u8) -> &'static str {
         0x11 => "读块数据",
         0x12 => "写块数据",
         0x2B => "装载密钥",
+        0x2C => "设置波特率",
         0x2D => "设置地址",
         0x2E => "设置自动方式",
         0x2F => "设置防重读时长",
@@ -1377,6 +1547,10 @@ impl Simulator {
         }
         if frame.command == 0x2D {
             self.configuration.module_id = frame.parameters[0];
+        }
+        if frame.command == 0x2C {
+            self.configuration.baud_rate =
+                u32::from_le_bytes(frame.parameters[..4].try_into().unwrap());
         }
         if frame.command == 0x2F {
             self.configuration.reset_ms =
@@ -1531,7 +1705,7 @@ mod tests {
         for command in 0..=255 {
             if !matches!(
                 command,
-                0x10 | 0x11 | 0x12 | 0x2B | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 | 0x34
+                0x10 | 0x11 | 0x12 | 0x2B | 0x2C | 0x2D | 0x2E | 0x2F | 0x30 | 0x31 | 0x32 | 0x33 | 0x34
             ) {
                 assert_eq!(
                     validate(&request(command, vec![])).unwrap_err().code,
@@ -1556,13 +1730,9 @@ mod tests {
         assert_eq!(validate(&req).unwrap_err().code, "invalid_parameters");
     }
     #[test]
-    fn fixed_baud_and_extension_parameter_limits_are_enforced() {
-        assert_eq!(
-            validate(&request(0x2C, vec![0, 1, 0xC2, 0, 0x98, 0x24, 0x31]))
-                .unwrap_err()
-                .code,
-            "excluded_operation"
-        );
+    fn baud_and_extension_parameter_limits_are_enforced() {
+        assert!(validate(&request(0x2C, vec![0, 0xC2, 1, 0, 0x98, 0x24, 0x31])).is_ok());
+        assert!(validate(&request(0x2C, vec![0, 0, 0, 0, 0x98, 0x24, 0x31])).is_err());
         for value in [0u16, 100, 1000, 3000] {
             assert!(validate(&request(0x2F, value.to_le_bytes().to_vec())).is_ok());
         }
@@ -1743,9 +1913,16 @@ mod tests {
         assert_eq!(service.snapshot().unwrap().connection.address, 0x7F);
         service.execute(request(0x2F, vec![0xE8, 3])).unwrap();
         service.execute(request(0x30, vec![7])).unwrap();
-        assert_eq!(service.snapshot().unwrap().connection.baud_rate, 115200);
+        service
+            .execute(request(
+                0x2C,
+                vec![0x80, 0x25, 0, 0, 0x98, 0x24, 0x31],
+            ))
+            .unwrap();
+        assert_eq!(service.snapshot().unwrap().connection.baud_rate, 9600);
         let configuration = service.snapshot().unwrap().configuration.unwrap();
         assert_eq!(configuration.module_id, 0x7F);
+        assert_eq!(configuration.baud_rate, 9600);
         assert_eq!(configuration.reset_ms, 1000);
         assert_eq!(configuration.antenna_gain, 7);
         let mut keys = vec![0x77; 12];
@@ -1838,12 +2015,12 @@ mod tests {
     }
 
     #[test]
-    fn current_firmware_rejects_nondefault_connection_before_opening_serial() {
+    fn connection_rejects_unsupported_baud_before_opening_serial() {
         let service = Service::default();
         let error = service
             .connect(Config {
                 port: "COM-NOT-OPENED".into(),
-                baud_rate: 9600,
+                baud_rate: 230400,
                 address: 0,
                 timeout_ms: 1000,
                 simulation: false,
@@ -1851,11 +2028,11 @@ mod tests {
                 profile: "current".into(),
             })
             .unwrap_err();
-        assert_eq!(error.code, "invalid_baud");
+        assert_eq!(error.code, "baud_probe_failed");
     }
 
     #[test]
-    fn current_firmware_never_queues_baud_or_unimplemented_commands() {
+    fn unimplemented_commands_are_not_queued() {
         let service = Service::default();
         {
             let mut core = service.core.lock().unwrap();
@@ -1868,10 +2045,7 @@ mod tests {
             stop: Arc::new(AtomicBool::new(false)),
             join: None,
         });
-        for req in [
-            request(0x2C, vec![0, 1, 0xC2, 0, 0x98, 0x24, 0x31]),
-            request(0x13, vec![1, 0, 0, 0, 0]),
-        ] {
+        for req in [request(0x13, vec![1, 0, 0, 0, 0])] {
             assert_eq!(service.execute(req).unwrap_err().code, "excluded_operation");
         }
         assert!(matches!(

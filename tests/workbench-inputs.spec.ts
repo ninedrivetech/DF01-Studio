@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMPTY_SNAPSHOT } from "../src/lib/types";
 
-test("serial list stays complete after selection and preserves manual or unplugged ports", async ({
+test("serial list stays complete after selection and preserves unplugged ports", async ({
   page,
 }) => {
   await page.addInitScript((snapshot) => {
@@ -45,16 +45,16 @@ test("serial list stays complete after selection and preserves manual or unplugg
   await page.goto("/");
   const ports = page.getByRole("combobox", { name: "串口", exact: true });
   await ports.click();
-  const options = page.getByRole("listbox", { name: "可用串口" }).getByRole("option");
+  const options = page
+    .getByRole("listbox", { name: "可用串口" })
+    .getByRole("option");
   await expect(options).toHaveText([
     "请选择串口",
     "USB Serial Device (COM1)USB test reader",
     "USB-SERIAL CH340 (COM2)USB test reader",
     "USB Serial Device (COM10)USB test reader",
   ]);
-  await page
-    .getByRole("option", { name: /USB-SERIAL CH340 \(COM2\)/ })
-    .click();
+  await page.getByRole("option", { name: /USB-SERIAL CH340 \(COM2\)/ }).click();
   await expect(ports).toHaveText("USB-SERIAL CH340 (COM2)");
   await ports.click();
   await expect(options).toHaveCount(4);
@@ -71,23 +71,19 @@ test("serial list stays complete after selection and preserves manual or unplugg
   await ports.click();
   await expect(options).toContainText([
     "请选择串口",
-    "COM10未检测到 / 手动指定",
+    "COM10未检测到",
     "COM1",
     "COM12",
   ]);
   await ports.press("Escape");
   await expect(page.getByRole("listbox")).toHaveCount(0);
-  await page.getByRole("button", { name: "手动输入", exact: true }).click();
-  await page.getByLabel("手动串口").fill("COM99");
-  await page.getByRole("button", { name: "返回列表", exact: true }).click();
-  await expect(ports).toHaveText("COM99");
   await page.evaluate(() => {
     (window as unknown as { serialTest: { fail: boolean } }).serialTest.fail =
       true;
   });
   await page.getByRole("button", { name: "刷新串口" }).click();
   await expect(page.getByRole("alert")).toContainText("串口扫描失败");
-  await expect(ports).toHaveText("COM99");
+  await expect(ports).toHaveText("COM10");
   await page.evaluate(() => {
     (window as unknown as { serialTest: { fail: boolean } }).serialTest.fail =
       false;

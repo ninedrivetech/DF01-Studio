@@ -71,6 +71,7 @@ export function validateRequest(request: CommandRequest): void {
     17: 1,
     18: 17,
     43: 18,
+    44: 7,
     45: 4,
     46: 10,
     47: 2,
@@ -87,6 +88,7 @@ export function validateRequest(request: CommandRequest): void {
     throw new Error("扇区控制块需要二次确认");
   const fixed: Record<number, number[]> = {
     43: [0, 3, 8, 5, 2, 7],
+    44: [0x98, 0x24, 0x31],
     45: [0x37, 0x21, 0x56],
     46: [0x23, 0x12, 0x54],
   };
@@ -95,6 +97,13 @@ export function validateRequest(request: CommandRequest): void {
     hex(p.slice(-fixed[command].length)) !== hex(fixed[command])
   )
     throw new Error("命令确认字节不正确");
+  if (
+    command === 44 &&
+    !BAUD_RATES.includes(p[0] + p[1] * 256 + p[2] * 65536 + p[3] * 16777216)
+  )
+    throw new Error(
+      "波特率必须为 2400、4800、9600、14400、19200、28800、38400、57600 或 115200",
+    );
   if (command === 46 && (p[0] > 3 || p[1] !== p[0] + 10))
     throw new Error("自动方式仅支持 0、1、2、3，模式校验字节必须为模式 + 0A");
   if (
@@ -159,13 +168,14 @@ let deviceConfiguration = defaultConfiguration(0);
 
 function configurationBytes(): number[] {
   const c = deviceConfiguration;
+  const baud = c.baudRate;
   return [
     0,
     c.moduleId,
-    0,
-    0xc2,
-    1,
-    0,
+    baud & 255,
+    (baud >> 8) & 255,
+    (baud >> 16) & 255,
+    (baud >> 24) & 255,
     c.autoMode,
     c.autoBlock,
     ...c.autoInitialValue,
@@ -294,8 +304,6 @@ function validateConfig(config: ConnectConfig) {
   if (config.profile !== "current" && config.profile !== "full")
     throw new Error("固件配置必须为 current 或 full");
   if (!isByte(config.address)) throw new Error("地址必须为 0–255 的整数");
-  if (!BAUD_RATES.includes(config.baudRate))
-    throw new Error("上位机固定使用 115200 bit/s");
   if (
     !Number.isInteger(config.timeoutMs) ||
     config.timeoutMs < 100 ||
@@ -400,6 +408,11 @@ async function executeLocal(
   if (command === 0x2b) {
     deviceConfiguration.keyA = p.slice(0, 6);
     deviceConfiguration.keyB = p.slice(6, 12);
+  }
+  if (command === 0x2c) {
+    deviceConfiguration.baudRate =
+      p[0] + p[1] * 256 + p[2] * 65536 + p[3] * 16777216;
+    demo.connection.baudRate = deviceConfiguration.baudRate;
   }
   if (command === 0x2d) deviceConfiguration.moduleId = p[0];
   if (command === 0x2e) {
@@ -541,7 +554,7 @@ async function local<T>(
         connected: true,
         simulation: true,
         port: "SIMULATOR",
-        baudRate: config.baudRate,
+        baudRate: 115200,
         address: config.address,
         profile: config.profile,
       },

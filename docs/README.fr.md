@@ -49,7 +49,7 @@ Amber Specimen, Tundra Glow, Night Watch et High Contrast, présentés sur la m�
 Sous Windows, décompressez l’application portable et lancez `df01-studio.exe`. Microsoft Edge WebView2 Runtime est nécessaire. Sous Linux, installez le paquet `.deb` ou lancez l’AppImage ; les prérequis figurent dans le [guide d’utilisation](USER_GUIDE.md).
 
 1. Branchez l’adaptateur série et le lecteur, choisissez le port et saisissez l’identifiant actuel du module (`00` par défaut).
-2. Connectez-vous et attendez la lecture de la configuration. La liaison utilise **115200 bit/s, 8N1, sans contrôle de flux**.
+2. Connectez-vous et attendez la lecture de la configuration. L’application détecte automatiquement le débit du module ; la liaison utilise **8N1, sans contrôle de flux**.
 3. Présentez une carte et lisez son identifiant ou sa mémoire. Enregistrez séparément le mode automatique, la temporisation anti-répétition et le gain.
 4. Sans matériel, sélectionnez un appareil simulé, puis le produit Fruitfly ou Cockroach.
 

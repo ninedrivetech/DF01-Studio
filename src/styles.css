@@ -495,6 +495,21 @@ h1 {
   align-self: center;
   color: var(--accent-ink);
 }
+@media (max-width: 1440px) {
+  .connection-strip {
+    grid-template-columns: 130px minmax(0, 1fr) 90px max-content;
+    gap: 10px;
+    padding: 17px 14px;
+  }
+  .connection-strip > .connection-icon {
+    display: none;
+  }
+  .connection-strip > .button {
+    min-width: max-content;
+    grid-column: 4;
+    justify-self: end;
+  }
+}
 .field {
   display: flex;
   flex-direction: column;
@@ -669,6 +684,110 @@ input[aria-invalid="true"] {
   .serial-options {
     left: auto;
     right: 0;
+  }
+}
+
+/* Connection controls use an explicit flex layout so every module keeps its
+   own height and the serial picker receives the remaining width. */
+.connection-strip {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+}
+.connection-strip > .connection-summary {
+  display: none;
+}
+.connection-strip > .connection-icon {
+  display: flex;
+  flex: 0 0 28px;
+  align-self: center;
+}
+.connection-strip > .connection-method {
+  flex: 0 0 130px;
+  min-width: 0;
+}
+.connection-strip > .connection-port {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.connection-strip > .connection-address {
+  flex: 0 0 90px;
+  min-width: 0;
+}
+.connection-strip > .button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  align-self: flex-end;
+  grid-column: auto !important;
+}
+.connection-strip .field {
+  min-height: 62px;
+}
+.connection-strip .serial-label,
+.connection-strip .serial-controls {
+  min-width: 0;
+}
+@media (max-width: 1440px) {
+  .connection-strip > .connection-icon {
+    display: none;
+  }
+  .connection-strip > .connection-method {
+    flex-basis: 120px;
+  }
+  .connection-strip > .connection-address {
+    flex-basis: 82px;
+  }
+}
+@media (max-width: 760px) {
+  .connection-strip {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: end;
+    padding: 10px;
+  }
+  .connection-strip > .connection-summary {
+    display: flex;
+    grid-column: 1;
+    min-width: 0;
+  }
+  .connection-strip > .connection-summary > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .connection-strip > .connection-summary strong {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+  }
+  .connection-strip > .connection-summary span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .connection-strip > .connection-icon {
+    display: none;
+  }
+  .connection-strip.is-connected:not(.expanded) > .field {
+    display: none;
+  }
+  .connection-strip.is-connected > .button {
+    grid-column: 2 !important;
+    padding: 0 10px;
+  }
+  .connection-strip.expanded {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+  .connection-strip.expanded > .connection-summary,
+  .connection-strip.expanded > .button {
+    grid-column: 1 / -1 !important;
+  }
+  .connection-strip.expanded > .field {
+    display: flex;
+    min-height: 62px;
   }
 }
 input.gain-slider[type="range"] {
@@ -1956,8 +2075,13 @@ dd {
   }
   .connection-strip {
     gap: 10px;
-    grid-template-columns: 110px minmax(100px, 1fr) 97px 60px auto;
+    grid-template-columns: 100px minmax(0, 1fr) 78px max-content;
     padding: 17px 14px;
+  }
+  .connection-strip > .button {
+    min-width: max-content;
+    grid-column: 4;
+    justify-self: end;
   }
   .connection-icon {
     display: none;

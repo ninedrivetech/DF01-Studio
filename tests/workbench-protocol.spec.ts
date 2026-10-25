@@ -68,8 +68,19 @@ test("new configuration controls persist acknowledged values and reject invalid 
   page,
 }) => {
   await connect(page);
+  await expect(page.getByLabel("连接波特率", { exact: true })).toHaveCount(0);
   await navigate(page, "设备配置");
-  await expect(page.getByText("新波特率", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("新波特率", { exact: true })).toBeVisible();
+  const baudRow = page.locator(".setting-row").filter({
+    has: page.getByRole("heading", { name: "模块波特率", exact: true }),
+  });
+  await baudRow.getByLabel("新波特率", { exact: true }).selectOption("9600");
+  await baudRow.getByRole("button", { name: "应用", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "确认执行" })
+    .click();
+  await expect(page.locator(".saved-configuration")).toContainText("9600");
   await expect(page.getByLabel("固件配置")).toHaveCount(0);
   await page.getByLabel("防重读时长").fill("50");
   await page.getByRole("button", { name: "保存时长", exact: true }).click();

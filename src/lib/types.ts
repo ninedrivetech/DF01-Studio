@@ -9,7 +9,6 @@ export interface Connection {
 export interface ConnectConfig {
   simulationProductMode?: 0 | 1;
   port: string;
-  baudRate: number;
   address: number;
   timeoutMs: number;
   simulation: boolean;
@@ -84,7 +83,9 @@ export interface Preview {
   hex: string;
   length: number;
 }
-export const BAUD_RATES = [115200];
+export const BAUD_RATES = [
+  2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200,
+];
 export const GAIN_DB = [18, 23, 18, 23, 33, 38, 43, 48] as const;
 export const EMPTY_SNAPSHOT: Snapshot = {
   connection: {
@@ -109,6 +110,7 @@ export const COMMAND_NAMES: Record<number, string> = {
   0x11: "读取数据块",
   0x12: "写入数据块",
   0x2b: "装载密钥",
+  0x2c: "设置波特率",
   0x2d: "设置地址",
   0x2e: "设置自动方式",
   0x2f: "设置防重读时长",

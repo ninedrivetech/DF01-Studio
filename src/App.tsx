@@ -50,7 +50,12 @@ import {
   Zap,
 } from "lucide-react";
 import { api, errorMessage, hex, isDesktop, parseHex } from "./lib/api";
-import { COMMAND_NAMES, EMPTY_SNAPSHOT, GAIN_DB } from "./lib/types";
+import {
+  BAUD_RATES,
+  COMMAND_NAMES,
+  EMPTY_SNAPSHOT,
+  GAIN_DB,
+} from "./lib/types";
 import { Workbench } from "./components/Workbench";
 import { ProductFeatures, ProductMark } from "./components/ProductFeatures";
 import { ByteInspector, ByteComposer } from "./components/ByteInspector";
@@ -207,7 +212,6 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY_SNAPSHOT);
   const [config, setConfig] = useState<ConnectConfig>({
     port: "",
-    baudRate: 115200,
     address: 0,
     timeoutMs: 1500,
     simulation: !isDesktop,
@@ -244,6 +248,7 @@ export default function App() {
   const [antennaGain, setAntennaGain] = useState(4);
   const [gainCelebration, setGainCelebration] = useState(0);
   const [newAddress, setNewAddress] = useState(0);
+  const [newBaudRate, setNewBaudRate] = useState(115200);
   const [autoMode, setAutoMode] = useState(0);
   const [autoBlock, setAutoBlock] = useState(1);
   const [memoryKind, setMemoryKind] = useState<"classic" | "pages">("classic");
@@ -469,6 +474,9 @@ export default function App() {
   useEffect(() => {
     if (saved) setAntennaGain(saved.antennaGain);
   }, [saved?.antennaGain, connected]);
+  useEffect(() => {
+    if (saved) setNewBaudRate(saved.baudRate);
+  }, [saved?.baudRate, connected]);
 
   const saveGain = () =>
     void run("设置天线增益", async () => {
@@ -940,7 +948,7 @@ export default function App() {
                       : snapshot.connection.port}
                   </strong>
                   <span>
-                    115200 · ID{" "}
+                    {snapshot.connection.baudRate} · ID{" "}
                     {snapshot.connection.address
                       .toString(16)
                       .padStart(2, "0")
@@ -961,7 +969,7 @@ export default function App() {
             <div className="connection-icon">
               <Cable size={22} />
             </div>
-            <Field label={t("连接方式")}>
+            <Field label={t("连接方式")} className="connection-method">
               <select
                 aria-label={t("连接方式")}
                 value={config.simulation ? "simulation" : "serial"}
@@ -970,7 +978,6 @@ export default function App() {
                   setConfig((c) => ({
                     ...c,
                     simulation: e.target.value === "simulation",
-                    baudRate: 115200,
                   }))
                 }
               >
@@ -979,7 +986,7 @@ export default function App() {
               </select>
             </Field>
             {config.simulation ? (
-              <Field label={t("模拟产品")}>
+              <Field label={t("模拟产品")} className="connection-port">
                 <select
                   aria-label={t("模拟产品")}
                   value={config.simulationProductMode ?? 0}
@@ -1002,12 +1009,10 @@ export default function App() {
                 onChange={(port) => setConfig((c) => ({ ...c, port }))}
                 disabled={connected || !!busy}
                 simulation={config.simulation}
+                className="connection-port"
               />
             )}
-            <Field label={t("波特率")}>
-              <input aria-label={t("连接波特率")} value="115200" readOnly />
-            </Field>
-            <Field label={t("地址")}>
+            <Field label={t("地址")} className="connection-address">
               <NumberInput
                 aria-label={t("连接地址")}
                 min={0}
@@ -1059,7 +1064,7 @@ export default function App() {
           <div className="protocol-strip">
             <ShieldCheck size={14} />
             <span>{t(cockroach ? "偷油婆一号" : "果蝇1号 · DF-01")}</span>
-            <span>115200 · 8N1</span>
+            <span>{snapshot.connection.baudRate} · 8N1</span>
             <span>
               {snapshot.configuration
                 ? t("配置已同步")
@@ -1780,6 +1785,65 @@ export default function App() {
                                   });
                                 }),
                               `${snapshot.connection.address} → ${newAddress}`,
+                            );
+                          } catch (e) {
+                            notify(errorMessage(e), true);
+                          }
+                        }}
+                      >
+                        {t("应用")}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="setting-row">
+                    <div>
+                      <h3>{t("模块波特率")}</h3>
+                      <p>
+                        {t("修改后设备会使用新波特率，本机串口也会立即切换。")}
+                      </p>
+                    </div>
+                    <div className="setting-controls">
+                      <Field label={t("新波特率")}>
+                        <select
+                          aria-label={t("新波特率")}
+                          value={newBaudRate}
+                          disabled={!!busy}
+                          onChange={(event) =>
+                            setNewBaudRate(Number(event.target.value))
+                          }
+                        >
+                          {BAUD_RATES.map((baudRate) => (
+                            <option key={baudRate} value={baudRate}>
+                              {baudRate}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Button
+                        disabled={!fullCapabilities || !!busy}
+                        onClick={() => {
+                          try {
+                            if (!BAUD_RATES.includes(newBaudRate))
+                              throw new Error("波特率不在支持范围内");
+                            confirm(
+                              "修改模块波特率",
+                              "设备会先使用当前波特率确认，随后切换到新波特率。",
+                              () =>
+                                void run("设置波特率", async () => {
+                                  await execute({
+                                    command: 0x2c,
+                                    parameters: [
+                                      newBaudRate & 255,
+                                      (newBaudRate >> 8) & 255,
+                                      (newBaudRate >> 16) & 255,
+                                      (newBaudRate >> 24) & 255,
+                                      0x98,
+                                      0x24,
+                                      0x31,
+                                    ],
+                                  });
+                                }),
+                              `${snapshot.configuration?.baudRate ?? snapshot.connection.baudRate} → ${newBaudRate}`,
                             );
                           } catch (e) {
                             notify(errorMessage(e), true);

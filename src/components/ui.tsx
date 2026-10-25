@@ -51,10 +51,11 @@ export function Field({
   label,
   children,
   hint,
-}: PropsWithChildren<{ label: string; hint?: string }>) {
+  className = "",
+}: PropsWithChildren<{ label: string; hint?: string; className?: string }>) {
   useLanguage();
   return (
-    <label className="field">
+    <label className={`field ${className}`.trim()}>
       <span>{t(label)}</span>
       {children}
       {hint && <small>{t(hint)}</small>}

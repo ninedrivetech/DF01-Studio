@@ -49,7 +49,7 @@ Amber Specimen, Tundra Glow, Night Watch and High Contrast, shown on the same wo
 On Windows, extract the portable application and run `df01-studio.exe`. Microsoft Edge WebView2 Runtime is required. On Linux, install the `.deb` package or run the AppImage; see the [user guide](USER_GUIDE.md) for system requirements.
 
 1. Connect the serial adapter and reader, select the port and enter the current module ID (default `00`).
-2. Connect and wait for configuration readback. Communication uses **115200 bit/s, 8N1, no flow control**.
+2. Connect and wait for configuration readback. The host automatically probes the module baud rate; communication uses **8N1, no flow control**.
 3. Present a card and read its ID or memory. Save automatic mode, duplicate suppression and gain separately.
 4. To explore without hardware, select a simulated device and choose Fruitfly or Cockroach.
 
