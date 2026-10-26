@@ -1,0 +1,178 @@
+name: Build and publish desktop release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create or overwrite
+        required: true
+        default: v1.1.2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22.12.0"
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+          - platform: linux
+            os: ubuntu-22.04
+          - platform: macos
+            os: macos-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libssl-dev \
+            libudev-dev \
+            libwebkit2gtk-4.0-dev \
+            librsvg2-dev \
+            patchelf \
+            pkg-config \
+            wget
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Build Windows bundles
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          npm run tauri -- build --bundles nsis
+          npm run package:portable
+          $version = node -p "require('./package.json').version"
+          $setup = @(Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe")
+          if ($setup.Count -ne 1) {
+            throw "Expected one Windows NSIS installer, found $($setup.Count)."
+          }
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Copy-Item $setup[0].FullName "release/DF-01-$version-windows-x64-setup.exe"
+          Copy-Item "src-tauri/target/release/df01-studio.exe" "release/DF-01-$version-windows-x64.exe"
+          Move-Item "release/DF-01-$version-portable.zip" "release/DF-01-$version-windows-x64-portable.zip"
+          Remove-Item "release/SHA256SUMS.txt"
+
+      - name: Build Linux bundles
+        if: matrix.platform == 'linux'
+        run: |
+          npm run tauri -- build --config src-tauri/tauri.linux.conf.json
+          npm run package:portable
+          version="$(node -p "require('./package.json').version")"
+          appimage=(src-tauri/target/release/bundle/appimage/*_"$version"_*.AppImage)
+          if [ "${#appimage[@]}" -ne 1 ]; then
+            echo "Expected one Linux AppImage, found ${#appimage[@]}."
+            exit 1
+          fi
+          cp "${appimage[0]}" "release/DF-01-${version}-linux-x64.AppImage"
+          rm "release/SHA256SUMS-linux-x64.txt"
+
+      - name: Build macOS bundle
+        if: matrix.platform == 'macos'
+        run: |
+          npm run tauri -- build --config src-tauri/tauri.macos.conf.json
+          version="$(node -p "require('./package.json').version")"
+          dmg=(src-tauri/target/release/bundle/dmg/*.dmg)
+          if [ "${#dmg[@]}" -ne 1 ]; then
+            echo "Expected one macOS DMG, found ${#dmg[@]}."
+            exit 1
+          fi
+          arch="$(uname -m)"
+          mkdir -p release
+          cp "${dmg[0]}" "release/DF-01-${version}-macos-${arch}.dmg"
+
+      - name: Upload platform assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      - name: Create checksums and release notes
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          checksum_file="release/SHA256SUMS-${RELEASE_TAG}.txt"
+          find release -maxdepth 1 -type f ! -name "$(basename "$checksum_file")" -printf '%f\n' \
+            | sort \
+            | while IFS= read -r filename; do
+                sha256sum "release/$filename"
+              done > "$checksum_file"
+          cat > release-notes.md <<EOF
+          ## ${RELEASE_TAG} 重新发布
+
+          由 GitHub Actions 使用 Windows、Linux 和 macOS runner 从提交 ${SOURCE_SHA} 构建。
+          本次发布会覆盖同名 Release 中的已有资产，并补充 macOS DMG。
+
+          ### 下载
+
+          - Windows：安装包、便携 ZIP 和独立可执行文件。
+          - Linux：DEB、AppImage 和便携 tar.gz。
+          - macOS：DMG。
+          - SHA256SUMS-${RELEASE_TAG}.txt：全部下载文件的 SHA-256 校验和。
+          EOF
+
+      - name: Create or overwrite GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: DF-01 Studio ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: release-notes.md
+          files: release/*
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
