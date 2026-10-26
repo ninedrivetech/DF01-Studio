@@ -32,7 +32,7 @@ jobs:
           - platform: windows
             os: windows-latest
           - platform: linux
-            os: ubuntu-22.04
+            os: ubuntu-24.04
           - platform: macos
             os: macos-latest
 
@@ -66,7 +66,8 @@ jobs:
             libgtk-3-dev \
             libssl-dev \
             libudev-dev \
-            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
             librsvg2-dev \
             patchelf \
             pkg-config \
@@ -79,7 +80,7 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          npm run tauri -- build --bundles nsis
+          npx tauri build --bundles nsis
           npm run package:portable
           $version = node -p "require('./package.json').version"
           $setup = @(Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe")
@@ -95,7 +96,7 @@ jobs:
       - name: Build Linux bundles
         if: matrix.platform == 'linux'
         run: |
-          npm run tauri -- build --config src-tauri/tauri.linux.conf.json
+          npx tauri build --config src-tauri/tauri.linux.conf.json
           npm run package:portable
           version="$(node -p "require('./package.json').version")"
           appimage=(src-tauri/target/release/bundle/appimage/*_"$version"_*.AppImage)
@@ -109,7 +110,7 @@ jobs:
       - name: Build macOS bundle
         if: matrix.platform == 'macos'
         run: |
-          npm run tauri -- build --config src-tauri/tauri.macos.conf.json
+          npx tauri build --config src-tauri/tauri.macos.conf.json
           version="$(node -p "require('./package.json').version")"
           dmg=(src-tauri/target/release/bundle/dmg/*.dmg)
           if [ "${#dmg[@]}" -ne 1 ]; then
