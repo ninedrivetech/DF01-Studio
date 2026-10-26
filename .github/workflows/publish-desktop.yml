@@ -147,12 +147,15 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          checksum_file="release/SHA256SUMS-${RELEASE_TAG}.txt"
-          find release -maxdepth 1 -type f ! -name "$(basename "$checksum_file")" -printf '%f\n' \
-            | sort \
-            | while IFS= read -r filename; do
-                sha256sum "release/$filename"
-              done > "$checksum_file"
+          checksum_name="SHA256SUMS-${RELEASE_TAG}.txt"
+          (
+            cd release
+            find . -maxdepth 1 -type f ! -name "$checksum_name" -printf '%f\n' \
+              | sort \
+              | while IFS= read -r filename; do
+                  sha256sum "$filename"
+                done
+          ) > "release/$checksum_name"
           cat > release-notes.md <<EOF
           ## ${RELEASE_TAG} 重新发布
 
